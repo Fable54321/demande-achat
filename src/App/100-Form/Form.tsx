@@ -3,8 +3,8 @@
 const Form = () => {
   return (
     <section className="w-full flex flex-col items-center">
-      <form action="" className="flex flex-col gap-4 mt-10  border border-secondary p-4 rounded-lg">
-        <label htmlFor="name" className="flex gap-2">
+      <form action="" className="flex flex-col gap-4 mt-6  border border-secondary p-4 rounded-lg">
+        <label htmlFor="name" className="flex flex-col gap-1">
           Nom:
         
             <input className="basic-input" type="text" id="name" name="name" />
