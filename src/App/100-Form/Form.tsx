@@ -1,5 +1,6 @@
 import { Calendar, DollarSign, Hash, Link2, PackageCheck, SquareDashedText, User, X } from "lucide-react"
 import { useState } from "react"
+import { getUrgencyFromExpectedDate } from "./getUrgencyFromExpectedDate"
 
 const dateFormatter = new Intl.DateTimeFormat("fr-CA", {
   weekday: "long",
@@ -47,6 +48,8 @@ const Form = () => {
     { label: "2 semaines", value: getDateFromToday(14) },
     { label: "1 mois", value: getDateFromToday(30) },
   ]
+
+  const urgency = getUrgencyFromExpectedDate(expectedDate)
 
   return (
     <section className="w-full flex flex-col items-center pb-10">
@@ -214,8 +217,19 @@ const Form = () => {
               </div>
 
               <p className="min-h-6 text-sm font-semibold text-secondary" aria-live="polite">
-                {selectedDateLabel ? `Date choisie: ${selectedDateLabel}` : "Aucune date choisie"}
-              </p>
+  {selectedDateLabel
+    ? `Date requise: ${selectedDateLabel}`
+    : "Aucune date requise choisie"}
+</p>
+
+{urgency && (
+  <div className="rounded-md border border-secondary/40 bg-white px-3 py-2 text-sm">
+    <span className="font-semibold text-secondary">
+      Niveau d'urgence: {urgency.label}
+    </span>
+    <p className="text-gray-600">{urgency.message}</p>
+  </div>
+)}
             </div>
           </div>
         </div>
