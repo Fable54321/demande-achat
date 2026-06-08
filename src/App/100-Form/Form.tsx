@@ -8,7 +8,6 @@ import {
   PackageCheck,
   Send,
   ShoppingBag,
-  SquareDashedText,
   User,
   X,
   type LucideIcon,
@@ -87,7 +86,6 @@ const Form = () => {
   const { createPurchaseRequest, loading, error } = usePurchaseRequests()
 
   const [userId, setUserId] = useState("")
-  const [name, setName] = useState("")
   const [description, setDescription] = useState("")
   const [justification, setJustification] = useState("")
   const [price, setPrice] = useState("")
@@ -113,13 +111,15 @@ const Form = () => {
     setSubmitError(null)
     setSubmitSuccess(false)
 
+    const trimmedDescription = description.trim()
+
     if (!userId.trim()) {
       setSubmitError("L'identifiant utilisateur est requis.")
       return
     }
 
-    if (!name.trim()) {
-      setSubmitError("Le nom du produit est requis.")
+    if (!trimmedDescription) {
+      setSubmitError("La description de la demande est requise.")
       return
     }
 
@@ -130,8 +130,8 @@ const Form = () => {
 
     const result = await createPurchaseRequest({
       requested_by_user_id: parseInt(userId),
-      item_name: name,
-      description: description || undefined,
+      item_name: trimmedDescription,
+      description: trimmedDescription,
       quantity: parseInt(quantity),
       reason: justification || undefined,
       requested_unit_price: price ? parseFloat(price) : undefined,
@@ -143,7 +143,6 @@ const Form = () => {
     if (result) {
       setSubmitSuccess(true)
       setUserId("")
-      setName("")
       setDescription("")
       setJustification("")
       setPrice("")
@@ -178,8 +177,8 @@ const Form = () => {
               </div>
             </div>
             <p className="max-w-sm text-sm leading-6 text-slate-600">
-              Ajoutez les informations connues pour accélérer la validation et
-              l'achat.
+              Expliquez clairement ce dont vous avez besoin pour accélérer la
+              validation et l'achat.
             </p>
           </div>
         </div>
@@ -229,52 +228,38 @@ const Form = () => {
             </Field>
           </div>
 
-          <Field icon={PackageCheck} label="Nom du produit">
-            <input
-              className={fieldControlClass}
-              type="text"
-              id="name"
-              name="name"
-              placeholder="Ex. Scanner sans fil, caisse de gants, pièce de remplacement"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+          <Field
+            helpText="Produit, marque, modèle, dimensions, usage ou toute contrainte importante."
+            icon={PackageCheck}
+            label="Description de la demande"
+          >
+            <textarea
+              className={`${fieldControlClass} min-h-40 resize-y leading-6`}
+              name="description"
+              id="description"
+              placeholder="Ex. J'ai besoin d'un scanner sans fil compatible avec les postes de l'entrepôt, idéalement avec base de recharge et portée d'au moins 10 mètres."
+              rows={5}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
               required
             />
           </Field>
 
-          <div className="grid gap-5 tablet:grid-cols-2">
-            <Field
-              helpText="Marque, modèle, dimensions ou détails utiles."
-              icon={SquareDashedText}
-              label="Description du produit"
-              optional
-            >
-              <textarea
-                className={`${fieldControlClass} min-h-32 resize-y leading-6`}
-                name="description"
-                id="description"
-                rows={4}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-              />
-            </Field>
-
-            <Field
-              helpText="Pourquoi l'achat est nécessaire."
-              icon={PackageCheck}
-              label="Justification de l'achat"
-              optional
-            >
-              <textarea
-                className={`${fieldControlClass} min-h-32 resize-y leading-6`}
-                name="justification"
-                id="justification"
-                rows={4}
-                value={justification}
-                onChange={(e) => setJustification(e.target.value)}
-              />
-            </Field>
-          </div>
+          <Field
+            helpText="Pourquoi l'achat est nécessaire."
+            icon={PackageCheck}
+            label="Justification de l'achat"
+            optional
+          >
+            <textarea
+              className={`${fieldControlClass} min-h-28 resize-y leading-6`}
+              name="justification"
+              id="justification"
+              rows={3}
+              value={justification}
+              onChange={(e) => setJustification(e.target.value)}
+            />
+          </Field>
 
           <div className="grid gap-5 tablet:grid-cols-2">
             <Field icon={DollarSign} label="Prix connu ou estimé" optional>
@@ -383,8 +368,8 @@ const Form = () => {
 
         <div className="flex flex-col gap-3 border-t border-secondary/10 bg-slate-50 px-5 py-4 tablet:flex-row tablet:items-center tablet:justify-between tablet:px-8">
           <p className="text-sm text-slate-500">
-            Les champs principaux permettent au service achat de traiter la
-            demande plus rapidement.
+            Une description claire aide le service achat à trouver le bon
+            produit plus rapidement.
           </p>
           <button
             type="submit"
