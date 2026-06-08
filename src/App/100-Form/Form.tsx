@@ -182,7 +182,7 @@ const Form = () => {
                     className={`rounded-md border px-3 py-2 text-sm font-semibold transition-colors ${
                       expectedDate === option.value
                         ? "border-secondary bg-secondary text-white"
-                        : "border-secondary/40 bg-tertiary text-secondary hover:bg-primary hover:text-white"
+                        : "border-secondary/40 bg-tertiary text-secondary hover:bg-primary hover:text-white hover:cursor-pointer"
                     }`}
                     onClick={() => setExpectedDate(option.value)}
                     aria-pressed={expectedDate === option.value}
