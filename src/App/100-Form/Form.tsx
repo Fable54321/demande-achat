@@ -43,7 +43,7 @@ const Form = () => {
   const minExpectedDate = getDateFromToday(0)
   const selectedDateLabel = formatSelectedDate(expectedDate)
   const quickDateOptions = [
-    { label: "Demain", value: getDateFromToday(1) },
+    { label: "2 jours", value: getDateFromToday(2) },
     { label: "1 semaine", value: getDateFromToday(7) },
     { label: "2 semaines", value: getDateFromToday(14) },
     { label: "1 mois", value: getDateFromToday(30) },
