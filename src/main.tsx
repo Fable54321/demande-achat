@@ -4,6 +4,7 @@ import './index.css'
 import App from './App/App';
 import Form from './App/100-Form/Form';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { PurchaseRequestsProvider } from './Contexts/PurchaseRequestContext';
 
 
 const router = createBrowserRouter([
@@ -21,6 +22,8 @@ const router = createBrowserRouter([
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <RouterProvider router={router} />
+    <PurchaseRequestsProvider>
+      <RouterProvider router={router} />
+    </PurchaseRequestsProvider>
   </StrictMode>,
 )

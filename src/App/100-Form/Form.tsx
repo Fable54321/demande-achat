@@ -1,6 +1,7 @@
 import { Calendar, DollarSign, Hash, Link2, PackageCheck, SquareDashedText, User, X } from "lucide-react"
 import { useState } from "react"
 import { getUrgencyFromExpectedDate } from "./getUrgencyFromExpectedDate"
+import { usePurchaseRequests } from "../../Contexts/PurchaseRequestContext"
 
 const dateFormatter = new Intl.DateTimeFormat("fr-CA", {
   weekday: "long",
@@ -32,6 +33,9 @@ const formatSelectedDate = (dateValue: string) => {
 }
 
 const Form = () => {
+  const { createPurchaseRequest, loading, error } = usePurchaseRequests()
+
+  const [userId, setUserId] = useState("")
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
   const [justification, setJustification] = useState("")
@@ -39,6 +43,8 @@ const Form = () => {
   const [link, setLink] = useState("")
   const [expectedDate, setExpectedDate] = useState("")
   const [quantity, setQuantity] = useState("1")
+  const [submitError, setSubmitError] = useState<string | null>(null)
+  const [submitSuccess, setSubmitSuccess] = useState(false)
 
   const minExpectedDate = getDateFromToday(0)
   const selectedDateLabel = formatSelectedDate(expectedDate)
@@ -51,9 +57,90 @@ const Form = () => {
 
   const urgency = getUrgencyFromExpectedDate(expectedDate)
 
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setSubmitError(null)
+    setSubmitSuccess(false)
+
+    if (!userId.trim()) {
+      setSubmitError("User ID is required")
+      return
+    }
+
+    if (!name.trim()) {
+      setSubmitError("Item name is required")
+      return
+    }
+
+    if (!quantity || parseInt(quantity) < 1) {
+      setSubmitError("Quantity must be at least 1")
+      return
+    }
+
+    const result = await createPurchaseRequest({
+      requested_by_user_id: parseInt(userId),
+      item_name: name,
+      description: description || undefined,
+      quantity: parseInt(quantity),
+      reason: justification || undefined,
+      requested_unit_price: price ? parseFloat(price) : undefined,
+      requested_supplier: undefined,
+      product_link: link || undefined,
+      expected_date: expectedDate || undefined,
+    })
+
+    if (result) {
+      setSubmitSuccess(true)
+      // Reset form
+      setUserId("")
+      setName("")
+      setDescription("")
+      setJustification("")
+      setPrice("")
+      setLink("")
+      setExpectedDate("")
+      setQuantity("1")
+      // Clear success message after 3 seconds
+      setTimeout(() => setSubmitSuccess(false), 3000)
+    } else {
+      setSubmitError(error || "Failed to create purchase request")
+    }
+  }
+
   return (
     <section className="w-full flex flex-col items-center pb-10">
-      <form action="" className="bg-tertiary shadow-lg flex flex-col w-[min(90%,32rem)] gap-5 mt-6 border border-secondary p-6 rounded-xl">
+      <form onSubmit={handleSubmit} className="bg-tertiary shadow-lg flex flex-col w-[min(90%,32rem)] gap-5 mt-6 border border-secondary p-6 rounded-xl">
+        {submitError && (
+          <div className="rounded-md border border-red-500 bg-red-50 px-3 py-2 text-sm text-red-700">
+            {submitError}
+          </div>
+        )}
+
+        {submitSuccess && (
+          <div className="rounded-md border border-green-500 bg-green-50 px-3 py-2 text-sm text-green-700">
+            Purchase request created successfully!
+          </div>
+        )}
+
+        <div className="flex items-center">
+          <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center mr-2">
+            <User className="text-white" size={28} />
+          </div>
+          <label htmlFor="userId" className="flex flex-col gap-1">
+            User ID:
+          </label>
+        </div>
+        <input
+          className="basic-input bg-white"
+          type="number"
+          id="userId"
+          name="userId"
+          min="1"
+          value={userId}
+          onChange={(e) => setUserId(e.target.value)}
+          required
+        />
+
         <div className="flex items-center">
           <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center mr-2">
             <User className="text-white" size={28} />
@@ -233,6 +320,14 @@ const Form = () => {
             </div>
           </div>
         </div>
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="mt-4 inline-flex h-10 items-center justify-center rounded-md border border-secondary bg-secondary px-6 text-sm font-semibold text-white transition-colors hover:bg-secondary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {loading ? "Submitting..." : "Submit Purchase Request"}
+        </button>
       </form>
     </section>
   )
