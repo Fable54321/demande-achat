@@ -114,7 +114,7 @@ const Form = () => {
     const trimmedDescription = description.trim()
 
     if (!userId.trim()) {
-      setSubmitError("L'identifiant utilisateur est requis.")
+      setSubmitError("Le nom du demandeur est requis.")
       return
     }
 
@@ -305,8 +305,8 @@ const Form = () => {
                       key={option.label}
                       className={`h-10 rounded-lg border px-3 text-sm font-bold transition ${
                         expectedDate === option.value
-                          ? "border-secondary bg-secondary text-white shadow-md shadow-secondary/20"
-                          : "border-secondary/20 bg-white text-secondary hover:border-secondary/45 hover:bg-primary/10"
+                          ? "border-secondary bg-secondary text-white shadow-md shadow-secondary/20 "
+                          : "border-secondary/20 bg-white text-secondary hover:border-secondary/45 hover:bg-primary/10 hover:cursor-pointer"
                       }`}
                       onClick={() => setExpectedDate(option.value)}
                       aria-pressed={expectedDate === option.value}
@@ -320,6 +320,7 @@ const Form = () => {
                   <input
                     className={`${fieldControlClass} tablet:flex-1`}
                     type="date"
+                    lang="fr-CA"
                     name="expectedDate"
                     id="expectedDate"
                     min={minExpectedDate}
