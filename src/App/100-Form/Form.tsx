@@ -35,6 +35,13 @@ const monthFormatter = new Intl.DateTimeFormat("fr-CA", {
 const fieldControlClass =
   "w-full rounded-lg border border-secondary/25 bg-white px-3.5 py-3 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-secondary focus:ring-4 focus:ring-primary/25"
 
+const MAX_NAME_LENGTH = 80
+const MAX_DESCRIPTION_LENGTH = 1000
+const MAX_JUSTIFICATION_LENGTH = 1000
+const MAX_LINK_LENGTH = 2048
+const MAX_QUANTITY = 9999
+const MAX_PRICE = 999999.99
+
 const toDateInputValue = (date: Date) => {
   const year = date.getFullYear()
   const month = String(date.getMonth() + 1).padStart(2, "0")
@@ -61,6 +68,58 @@ const parseDateInputValue = (dateValue: string) => {
   const [year, month, day] = dateValue.split("-").map(Number)
 
   return new Date(year, month - 1, day)
+}
+
+const stripUnsafeText = (value: string, maxLength: number) =>
+  value
+    .replace(/[\u0000-\u001F\u007F]/g, "")
+    .replace(/[<>]/g, "")
+    .slice(0, maxLength)
+
+const sanitizeName = (value: string) =>
+  stripUnsafeText(value, MAX_NAME_LENGTH).replace(
+    /[^\p{L}\p{M} .,'-]/gu,
+    "",
+  )
+
+const sanitizeQuantity = (value: string) => {
+  const digitsOnly = value.replace(/\D/g, "").slice(0, 4)
+
+  if (!digitsOnly) return ""
+
+  return String(Math.min(Number(digitsOnly), MAX_QUANTITY))
+}
+
+const sanitizePrice = (value: string) => {
+  const normalizedValue = value.replace(",", ".").replace(/[^\d.]/g, "")
+  const [whole = "", ...decimalParts] = normalizedValue.split(".")
+  const decimal = decimalParts.join("").slice(0, 2)
+  const wholeNumber = whole.slice(0, 6)
+
+  return decimalParts.length > 0 ? `${wholeNumber}.${decimal}` : wholeNumber
+}
+
+const sanitizeUrl = (value: string) =>
+  stripUnsafeText(value.trim(), MAX_LINK_LENGTH).replace(/\s/g, "")
+
+const isValidIsoDate = (value: string) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
+
+  const parsedDate = parseDateInputValue(value)
+
+  return toDateInputValue(parsedDate) === value
+}
+
+const isValidHttpUrl = (value: string) => {
+  if (!value) return true
+
+  try {
+    const url = new URL(value)
+
+    return url.protocol === "http:" || url.protocol === "https:"
+  } catch {
+    return false
+  }
 }
 
 
@@ -149,6 +208,13 @@ const Form = () => {
 
   const urgency = getUrgencyFromExpectedDate(expectedDate)
   const selectExpectedDate = (dateValue: string) => {
+    if (
+      !isValidIsoDate(dateValue) ||
+      parseDateInputValue(dateValue) < minExpectedDateObject
+    ) {
+      return
+    }
+
     setExpectedDate(dateValue)
     setCalendarMonth(getMonthStart(parseDateInputValue(dateValue)))
     setIsDatePickerOpen(false)
@@ -160,21 +226,81 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
   setSubmitError(null)
   setSubmitSuccess(false)
 
+  if (companyWebsite.trim()) {
+    setSubmitError("La demande n'a pas pu etre envoyee.")
+    return
+  }
+
   if (!formToken) {
     setSubmitError("Problème lors de la créeation de la demande.")
     console.error(error)
     return
   }
 
+  const safeName = sanitizeName(name).trim().replace(/\s+/g, " ")
+  const safeDescription = stripUnsafeText(
+    description,
+    MAX_DESCRIPTION_LENGTH,
+  ).trim()
+  const safeJustification = stripUnsafeText(
+    justification,
+    MAX_JUSTIFICATION_LENGTH,
+  ).trim()
+  const safeQuantity = Number(sanitizeQuantity(quantity))
+  const safePrice = price ? Number(sanitizePrice(price)) : null
+  const safeLink = sanitizeUrl(link)
+  const safeExpectedDate = expectedDate.trim()
+
+  if (!safeName) {
+    setSubmitError("Le nom du demandeur est requis.")
+    return
+  }
+
+  if (!safeDescription) {
+    setSubmitError("La description de la demande est requise.")
+    return
+  }
+
+  if (
+    !Number.isInteger(safeQuantity) ||
+    safeQuantity < 1 ||
+    safeQuantity > MAX_QUANTITY
+  ) {
+    setSubmitError(`La quantite doit etre entre 1 et ${MAX_QUANTITY}.`)
+    return
+  }
+
+  if (
+    safePrice !== null &&
+    (!Number.isFinite(safePrice) || safePrice < 0 || safePrice > MAX_PRICE)
+  ) {
+    setSubmitError("Le prix doit etre un montant valide.")
+    return
+  }
+
+  if (!isValidHttpUrl(safeLink)) {
+    setSubmitError("Le lien doit commencer par http:// ou https://.")
+    return
+  }
+
+  if (
+    safeExpectedDate &&
+    (!isValidIsoDate(safeExpectedDate) ||
+      parseDateInputValue(safeExpectedDate) < minExpectedDateObject)
+  ) {
+    setSubmitError("La date attendue doit etre aujourd'hui ou plus tard.")
+    return
+  }
+
   const createdRequest = await createPurchaseRequest(
     {
-      requested_by: name,
-      description,
-      quantity: Number(quantity),
-      reason: justification,
-      requested_unit_price: price ? Number(price) : null,
-      product_link: link || null,
-      expected_date: expectedDate.slice(0, 10) || null,
+      requested_by: safeName,
+      description: safeDescription,
+      quantity: safeQuantity,
+      reason: safeJustification || null,
+      requested_unit_price: safePrice,
+      product_link: safeLink || null,
+      expected_date: safeExpectedDate || null,
     },
     formToken
   )
@@ -249,8 +375,10 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
                 id="name"
                 name="name"
                 placeholder="Nom du demandeur"
+                autoComplete="name"
+                maxLength={MAX_NAME_LENGTH}
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => setName(sanitizeName(e.target.value))}
                 required
               />
             </Field>
@@ -262,10 +390,13 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
                 name="quantity"
                 id="quantity"
                 min="1"
+                max={MAX_QUANTITY}
                 step="1"
                 inputMode="numeric"
+                pattern="[0-9]*"
                 value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
+                onChange={(e) => setQuantity(sanitizeQuantity(e.target.value))}
+                required
               />
             </Field>
           </div>
@@ -273,7 +404,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
   type="text"
   name="companyWebsite"
   value={companyWebsite}
-  onChange={(e) => setCompanyWebsite(e.target.value)}
+  onChange={(e) => setCompanyWebsite(stripUnsafeText(e.target.value, 200))}
   className="hidden"
   tabIndex={-1}
   autoComplete="off"
@@ -290,8 +421,13 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
               id="description"
               placeholder="Décrire de façon claire le produit qui devra être acheté."
               rows={3}
+              maxLength={MAX_DESCRIPTION_LENGTH}
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={(e) =>
+                setDescription(
+                  stripUnsafeText(e.target.value, MAX_DESCRIPTION_LENGTH),
+                )
+              }
               required
             />
           </Field>
@@ -307,8 +443,13 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
               name="justification"
               id="justification"
               rows={3}
+              maxLength={MAX_JUSTIFICATION_LENGTH}
               value={justification}
-              onChange={(e) => setJustification(e.target.value)}
+              onChange={(e) =>
+                setJustification(
+                  stripUnsafeText(e.target.value, MAX_JUSTIFICATION_LENGTH),
+                )
+              }
             />
           </Field>
 
@@ -318,13 +459,14 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
                 className={fieldControlClass}
                 type="number"
                 min="0"
+                max={MAX_PRICE}
                 step="0.01"
                 inputMode="decimal"
                 name="price"
                 id="price"
                 placeholder="0.00"
                 value={price}
-                onChange={(e) => setPrice(e.target.value)}
+                onChange={(e) => setPrice(sanitizePrice(e.target.value))}
               />
             </Field>
 
@@ -338,8 +480,10 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
                 name="link"
                 id="link"
                 placeholder="https://..."
+                maxLength={MAX_LINK_LENGTH}
+                pattern="https?://.*"
                 value={link}
-                onChange={(e) => setLink(e.target.value)}
+                onChange={(e) => setLink(sanitizeUrl(e.target.value))}
               />
             </Field>
           </div>
@@ -465,6 +609,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
              hover:bg-[#3f610f] 
              hover:cursor-pointer
              focus:outline-none focus:ring-4
+             mr-0 ml-auto
              focus:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-55"
           >
             <Send size={18} aria-hidden="true" />
