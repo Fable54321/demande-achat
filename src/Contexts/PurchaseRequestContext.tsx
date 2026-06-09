@@ -21,13 +21,12 @@ export type PurchaseRequestStatus =
 export interface PurchaseRequest {
   id: number
 
-  requested_by_user_id: number | null
-  requested_at: string
+  requested_by: string
+requested_at: string
 
-  item_name: string
-  description: string | null
-  quantity: number
-  reason: string | null
+description: string
+quantity: number
+reason: string | null
 
   urgency: "normal" | "priority" | "urgent" | string | null
   expected_date: string | null
@@ -74,9 +73,8 @@ export interface PurchaseRequest {
 }
 
 export interface CreatePurchaseRequestPayload {
-  requested_by_user_id: number
-  item_name: string
-  description?: string | null
+  requested_by: string
+  description: string
   quantity?: number
   reason?: string | null
   requested_unit_price?: number | null

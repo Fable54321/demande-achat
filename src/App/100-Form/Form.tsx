@@ -1,6 +1,8 @@
 import {
   AlertCircle,
   Calendar,
+  ChevronLeft,
+  ChevronRight,
   CheckCircle2,
   DollarSign,
   Hash,
@@ -22,6 +24,13 @@ const dateFormatter = new Intl.DateTimeFormat("fr-CA", {
   month: "long",
   year: "numeric",
 })
+
+const monthFormatter = new Intl.DateTimeFormat("fr-CA", {
+  month: "long",
+  year: "numeric",
+})
+
+const weekdayLabels = ["dim.", "lun.", "mar.", "mer.", "jeu.", "ven.", "sam."]
 
 const fieldControlClass =
   "w-full rounded-lg border border-secondary/25 bg-white px-3.5 py-3 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-secondary focus:ring-4 focus:ring-primary/25"
@@ -46,6 +55,33 @@ const formatSelectedDate = (dateValue: string) => {
   if (!dateValue) return ""
 
   return dateFormatter.format(new Date(`${dateValue}T00:00:00`))
+}
+
+const parseDateInputValue = (dateValue: string) => {
+  const [year, month, day] = dateValue.split("-").map(Number)
+
+  return new Date(year, month - 1, day)
+}
+
+const getMonthStart = (date: Date) => {
+  const monthStart = new Date(date)
+  monthStart.setDate(1)
+  monthStart.setHours(0, 0, 0, 0)
+
+  return monthStart
+}
+
+const getCalendarDays = (monthDate: Date) => {
+  const firstDay = getMonthStart(monthDate)
+  const firstVisibleDay = new Date(firstDay)
+  firstVisibleDay.setDate(firstVisibleDay.getDate() - firstDay.getDay())
+
+  return Array.from({ length: 42 }, (_, index) => {
+    const date = new Date(firstVisibleDay)
+    date.setDate(firstVisibleDay.getDate() + index)
+
+    return date
+  })
 }
 
 type FieldProps = {
@@ -85,18 +121,30 @@ const Field = ({
 const Form = () => {
   const { createPurchaseRequest, loading, error } = usePurchaseRequests()
 
-  const [userId, setUserId] = useState("")
+  const [name, setName] = useState("")
   const [description, setDescription] = useState("")
   const [justification, setJustification] = useState("")
   const [price, setPrice] = useState("")
   const [link, setLink] = useState("")
   const [expectedDate, setExpectedDate] = useState("")
   const [quantity, setQuantity] = useState("1")
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
+  const [calendarMonth, setCalendarMonth] = useState(() =>
+    getMonthStart(new Date()),
+  )
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [submitSuccess, setSubmitSuccess] = useState(false)
 
   const minExpectedDate = getDateFromToday(0)
+  const minExpectedDateObject = parseDateInputValue(minExpectedDate)
   const selectedDateLabel = formatSelectedDate(expectedDate)
+  const calendarDays = getCalendarDays(calendarMonth)
+  const previousCalendarMonth = new Date(calendarMonth)
+  previousCalendarMonth.setMonth(previousCalendarMonth.getMonth() - 1)
+  const nextCalendarMonth = new Date(calendarMonth)
+  nextCalendarMonth.setMonth(nextCalendarMonth.getMonth() + 1)
+  const canGoToPreviousMonth =
+    previousCalendarMonth >= getMonthStart(minExpectedDateObject)
   const quickDateOptions = [
     { label: "Demain", value: getDateFromToday(1) },
     { label: "1 semaine", value: getDateFromToday(7) },
@@ -105,6 +153,11 @@ const Form = () => {
   ]
 
   const urgency = getUrgencyFromExpectedDate(expectedDate)
+  const selectExpectedDate = (dateValue: string) => {
+    setExpectedDate(dateValue)
+    setCalendarMonth(getMonthStart(parseDateInputValue(dateValue)))
+    setIsDatePickerOpen(false)
+  }
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -113,7 +166,7 @@ const Form = () => {
 
     const trimmedDescription = description.trim()
 
-    if (!userId.trim()) {
+    if (!name.trim()) {
       setSubmitError("Le nom du demandeur est requis.")
       return
     }
@@ -129,8 +182,7 @@ const Form = () => {
     }
 
     const result = await createPurchaseRequest({
-      requested_by_user_id: parseInt(userId),
-      item_name: trimmedDescription,
+      requested_by: name,
       description: trimmedDescription,
       quantity: parseInt(quantity),
       reason: justification || undefined,
@@ -142,7 +194,7 @@ const Form = () => {
 
     if (result) {
       setSubmitSuccess(true)
-      setUserId("")
+      setName("")
       setDescription("")
       setJustification("")
       setPrice("")
@@ -203,12 +255,12 @@ const Form = () => {
               <input
                 className={fieldControlClass}
                 type="number"
-                id="userId"
-                name="userId"
+                id="name"
+                name="name"
                 min="1"
                 placeholder="Ex. 42"
-                value={userId}
-                onChange={(e) => setUserId(e.target.value)}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
                 required
               />
             </Field>
@@ -308,7 +360,7 @@ const Form = () => {
                           ? "border-secondary bg-secondary text-white shadow-md shadow-secondary/20 "
                           : "border-secondary/20 bg-white text-secondary hover:border-secondary/45 hover:bg-primary/10 hover:cursor-pointer"
                       }`}
-                      onClick={() => setExpectedDate(option.value)}
+                      onClick={() => selectExpectedDate(option.value)}
                       aria-pressed={expectedDate === option.value}
                     >
                       {option.label}
@@ -318,21 +370,111 @@ const Form = () => {
 
                 <div className="flex flex-col gap-2 tablet:flex-row tablet:items-center">
                   <input
-                    className={`${fieldControlClass} tablet:flex-1`}
-                    type="date"
-                    lang="fr-CA"
+                    type="hidden"
                     name="expectedDate"
-                    id="expectedDate"
-                    min={minExpectedDate}
                     value={expectedDate}
-                    onChange={(e) => setExpectedDate(e.target.value)}
                   />
+
+                  <div className="relative tablet:flex-1">
+                    <button
+                      type="button"
+                      id="expectedDate"
+                      className={`${fieldControlClass} flex min-h-12 items-center justify-between gap-3 text-left`}
+                      onClick={() => setIsDatePickerOpen((isOpen) => !isOpen)}
+                      aria-expanded={isDatePickerOpen}
+                      aria-haspopup="dialog"
+                    >
+                      <span
+                        className={
+                          selectedDateLabel ? "text-slate-900" : "text-slate-400"
+                        }
+                      >
+                        {selectedDateLabel || "Choisir une date"}
+                      </span>
+                      <Calendar
+                        className="shrink-0 text-secondary"
+                        size={18}
+                        aria-hidden="true"
+                      />
+                    </button>
+
+                    {isDatePickerOpen && (
+                      <div
+                        className="absolute left-0 top-[calc(100%+0.5rem)] z-20 w-full rounded-lg border border-secondary/20 bg-white p-3 shadow-xl shadow-secondary/15 tablet:max-w-sm"
+                        role="dialog"
+                        aria-label="Calendrier de date attendue"
+                      >
+                        <div className="mb-3 flex items-center justify-between gap-2">
+                          <button
+                            type="button"
+                            className="grid h-9 w-9 place-items-center rounded-lg border border-secondary/20 text-secondary transition hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-40"
+                            onClick={() => setCalendarMonth(previousCalendarMonth)}
+                            disabled={!canGoToPreviousMonth}
+                            aria-label="Mois precedent"
+                          >
+                            <ChevronLeft size={18} aria-hidden="true" />
+                          </button>
+                          <p className="text-sm font-black capitalize text-slate-900">
+                            {monthFormatter.format(calendarMonth)}
+                          </p>
+                          <button
+                            type="button"
+                            className="grid h-9 w-9 place-items-center rounded-lg border border-secondary/20 text-secondary transition hover:bg-primary/10"
+                            onClick={() => setCalendarMonth(nextCalendarMonth)}
+                            aria-label="Mois suivant"
+                          >
+                            <ChevronRight size={18} aria-hidden="true" />
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-7 gap-1 text-center">
+                          {weekdayLabels.map((weekday) => (
+                            <span
+                              key={weekday}
+                              className="py-1 text-[0.7rem] font-bold uppercase text-slate-500"
+                            >
+                              {weekday}
+                            </span>
+                          ))}
+                          {calendarDays.map((date) => {
+                            const dateValue = toDateInputValue(date)
+                            const isCurrentMonth =
+                              date.getMonth() === calendarMonth.getMonth()
+                            const isSelected = expectedDate === dateValue
+                            const isDisabled = date < minExpectedDateObject
+
+                            return (
+                              <button
+                                type="button"
+                                key={dateValue}
+                                className={`grid h-9 place-items-center rounded-lg text-sm font-bold transition ${
+                                  isSelected
+                                    ? "bg-secondary text-white shadow-md shadow-secondary/20"
+                                    : "text-slate-800 hover:bg-primary/10"
+                                } ${
+                                  isCurrentMonth ? "" : "text-slate-300"
+                                } disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-transparent`}
+                                onClick={() => selectExpectedDate(dateValue)}
+                                disabled={isDisabled}
+                                aria-pressed={isSelected}
+                              >
+                                {date.getDate()}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
 
                   {expectedDate && (
                     <button
                       type="button"
                       className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-secondary/25 bg-white px-4 text-sm font-bold text-secondary transition hover:bg-secondary hover:text-white"
-                      onClick={() => setExpectedDate("")}
+                      onClick={() => {
+                        setExpectedDate("")
+                        setIsDatePickerOpen(false)
+                      }}
                       aria-label="Effacer la date sélectionnée"
                     >
                       <X size={18} aria-hidden="true" />
