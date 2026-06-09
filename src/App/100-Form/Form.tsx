@@ -98,7 +98,7 @@ const Form = () => {
   const minExpectedDate = getDateFromToday(0)
   const selectedDateLabel = formatSelectedDate(expectedDate)
   const quickDateOptions = [
-    { label: "2 jours", value: getDateFromToday(2) },
+    { label: "Demain", value: getDateFromToday(1) },
     { label: "1 semaine", value: getDateFromToday(7) },
     { label: "2 semaines", value: getDateFromToday(14) },
     { label: "1 mois", value: getDateFromToday(30) },
@@ -237,7 +237,7 @@ const Form = () => {
               className={`${fieldControlClass} min-h-40 resize-y leading-6`}
               name="description"
               id="description"
-              placeholder="Ex. J'ai besoin d'un scanner sans fil compatible avec les postes de l'entrepôt, idéalement avec base de recharge et portée d'au moins 10 mètres."
+              placeholder="Décrir de façon claire le produit qui devra être acheté."
               rows={5}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
