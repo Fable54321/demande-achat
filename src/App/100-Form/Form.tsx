@@ -82,13 +82,13 @@ const Field = ({
   label,
   optional,
 }: FieldProps) => (
-  <div className="flex flex-col gap-2">
+  <div className="flex flex-col gap-4">
     <div className="flex items-start gap-3">
-      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-secondary text-white shadow-sm shadow-secondary/20">
-        <Icon size={19} aria-hidden="true" />
+      <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-secondary text-white shadow-sm shadow-secondary/20">
+        <Icon size={22} aria-hidden="true" />
       </span>
       <div className="min-w-0 pt-0.5">
-        <label className="block text-sm font-bold text-slate-900">
+        <label className="block font-bold text-slate-900">
           {label}
           {optional && (
             <span className="ml-2 font-medium text-slate-500">Optionnel</span>
@@ -174,7 +174,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
       reason: justification,
       requested_unit_price: price ? Number(price) : null,
       product_link: link || null,
-      expected_date: expectedDate || null,
+      expected_date: expectedDate.slice(0, 10) || null,
     },
     formToken
   )
@@ -204,7 +204,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         onSubmit={handleSubmit}
         className="mx-auto flex w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-secondary/15 bg-white shadow-2xl shadow-secondary/10"
       >
-        <div className="border-b border-secondary/10 bg-tertiary px-5 py-5 tablet:px-8">
+        <div className="relative overflow-hidden border-b border-secondary/15 bg-[#eef4e8] px-5 py-5 shadow-[inset_0_-1px_0_rgba(75,115,18,0.08)] tablet:px-8">
           <div className="flex flex-col gap-4 tablet:flex-row tablet:items-center tablet:justify-between">
             <div className="flex items-center gap-4">
               <span className="grid h-12 w-12 place-items-center rounded-xl bg-secondary text-white shadow-lg shadow-secondary/25">
@@ -285,11 +285,11 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
             label="Description de la demande"
           >
             <textarea
-              className={`${fieldControlClass} min-h-40 resize-y leading-6`}
+              className={`${fieldControlClass} min-h-28 resize-y leading-6`}
               name="description"
               id="description"
               placeholder="Décrire de façon claire le produit qui devra être acheté."
-              rows={5}
+              rows={3}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               required
@@ -313,7 +313,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
           </Field>
 
           <div className="grid gap-5 tablet:grid-cols-2">
-            <Field icon={DollarSign} label="Prix connu ou estimé" optional>
+            <Field icon={DollarSign} label="Prix connu ou estimé (en $ cad)" optional>
               <input
                 className={fieldControlClass}
                 type="number"
@@ -328,8 +328,11 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
               />
             </Field>
 
-            <Field icon={Link2} label="Lien vers le produit" optional>
+            <Field
+            helpText = "Un lien vers le produit facilitera la validation de la demande."
+             icon={Link2} label="Lien vers le produit" optional>
               <input
+                
                 className={fieldControlClass}
                 type="url"
                 name="link"
@@ -453,10 +456,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         </div>
 
         <div className="flex flex-col gap-3 border-t border-secondary/10 bg-slate-50 px-5 py-4 tablet:flex-row tablet:items-center tablet:justify-between tablet:px-8">
-          <p className="text-sm text-slate-500">
-            Une description claire aide le service achat à trouver le bon
-            produit plus rapidement.
-          </p>
+          
           <button
             type="submit"
             disabled={loading || !formToken}
@@ -472,7 +472,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
           </button>
         </div>
       </form>
-      {submitSuccess && <p>La demande a bien été envoyée.</p>}
+      {submitSuccess && <p className="mt-4 text-green-600">La demande a bien été envoyée.</p>}
     </section>
   )
 }
