@@ -13,7 +13,7 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react"
-import { useEffect ,useState, type ReactNode } from "react"
+import { useEffect, useMemo, useState, type ReactNode } from "react"
 import { usePurchaseRequests } from "../../Contexts/PurchaseRequestContext"
 import { getUrgencyFromExpectedDate } from "./getUrgencyFromExpectedDate"
 import { getMonthStart} from "./Utils/getMonthStartandDays"
@@ -44,8 +44,9 @@ const MAX_QUANTITY = 9999
 const MAX_PRICE = 999999.99
 
 const MAX_IMAGES = 5
-const MAX_IMAGE_SIZE_MB = 5
+const MAX_IMAGE_SIZE_MB = 7
 const MAX_IMAGE_SIZE_BYTES = MAX_IMAGE_SIZE_MB * 1024 * 1024
+const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"]
 
 const toDateInputValue = (date: Date) => {
   const year = date.getFullYear()
@@ -237,8 +238,18 @@ const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 
   if (!selectedFiles.length) return
 
+  const remainingSlots = MAX_IMAGES - images.length
+
+  if (remainingSlots <= 0) {
+    e.target.value = ""
+    return
+  }
+
   const validImages = selectedFiles.filter((file) => {
-    return file.type.startsWith("image/") && file.size <= MAX_IMAGE_SIZE_BYTES
+    return (
+      ACCEPTED_IMAGE_TYPES.includes(file.type) &&
+      file.size <= MAX_IMAGE_SIZE_BYTES
+    )
   })
 
   if (validImages.length !== selectedFiles.length) {
@@ -248,7 +259,10 @@ const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
   }
 
   setImages((currentImages) => {
-    const combinedImages = [...currentImages, ...validImages]
+    const combinedImages = [
+      ...currentImages,
+      ...validImages.slice(0, remainingSlots),
+    ]
 
     return combinedImages.slice(0, MAX_IMAGES)
   })
@@ -260,7 +274,22 @@ const removeImage = (indexToRemove: number) => {
   setImages((currentImages) =>
     currentImages.filter((_, index) => index !== indexToRemove),
   )
-}  
+}
+
+const imagePreviews = useMemo(
+  () =>
+    images.map((image) => ({
+      file: image,
+      previewUrl: URL.createObjectURL(image),
+    })),
+  [images],
+)
+
+useEffect(() => {
+  return () => {
+    imagePreviews.forEach(({ previewUrl }) => URL.revokeObjectURL(previewUrl))
+  }
+}, [imagePreviews])
 
 const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
   e.preventDefault()
@@ -354,7 +383,7 @@ if (safeExpectedDate) {
 }
 
 images.forEach((image) => {
-  formData.append("pictures", image)
+  formData.append("pictures", image, image.name)
 })
 
 const createdRequest = await createPurchaseRequest(formData, formToken)
@@ -550,6 +579,7 @@ const createdRequest = await createPurchaseRequest(formData, formToken)
 >
   <div className="flex flex-col gap-3">
     <label
+      htmlFor="purchase-request-pictures"
       className={`flex min-h-28 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-secondary/30 bg-tertiary/50 px-4 py-5 text-center transition hover:border-secondary hover:bg-primary/10 ${
         images.length >= MAX_IMAGES ? "cursor-not-allowed opacity-60" : ""
       }`}
@@ -563,24 +593,25 @@ const createdRequest = await createPurchaseRequest(formData, formToken)
       </span>
 
       <input
+        id="purchase-request-pictures"
         type="file"
-        accept="image/*"
+        accept={ACCEPTED_IMAGE_TYPES.join(",")}
         multiple
-        className="hidden"
+        className="sr-only"
         disabled={images.length >= MAX_IMAGES}
         onChange={handleImageChange}
       />
     </label>
 
-    {images.length > 0 && (
+    {imagePreviews.length > 0 && (
       <div className="grid grid-cols-2 gap-3 tablet:grid-cols-5">
-        {images.map((image, index) => (
+        {imagePreviews.map(({ file, previewUrl }, index) => (
           <div
-            key={`${image.name}-${image.lastModified}-${index}`}
+            key={`${file.name}-${file.lastModified}-${index}`}
             className="relative overflow-hidden rounded-lg border border-secondary/15 bg-white shadow-sm"
           >
             <img
-              src={URL.createObjectURL(image)}
+              src={previewUrl}
               alt={`Photo sélectionnée ${index + 1}`}
               className="h-28 w-full object-cover"
             />
@@ -595,7 +626,7 @@ const createdRequest = await createPurchaseRequest(formData, formToken)
             </button>
 
             <div className="truncate px-2 py-1.5 text-xs text-slate-500">
-              {image.name}
+              {file.name}
             </div>
           </div>
         ))}
