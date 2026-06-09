@@ -12,7 +12,7 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react"
-import { useState, type FormEvent, type ReactNode } from "react"
+import { useEffect ,useState, type ReactNode } from "react"
 import { usePurchaseRequests } from "../../Contexts/PurchaseRequestContext"
 import { getUrgencyFromExpectedDate } from "./getUrgencyFromExpectedDate"
 import { getMonthStart} from "./Utils/getMonthStartandDays"
@@ -102,7 +102,13 @@ const Field = ({
 )
 
 const Form = () => {
-  const { createPurchaseRequest, loading, error } = usePurchaseRequests()
+  
+
+
+  const { getPurchaseRequestFormToken, createPurchaseRequest, loading, error } =
+  usePurchaseRequests()
+
+  const [formToken, setFormToken] = useState<string | null>(null)
 
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
@@ -118,6 +124,15 @@ const Form = () => {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [submitSuccess, setSubmitSuccess] = useState(false)
 
+  useEffect(() => {
+  const loadFormToken = async () => {
+    const token = await getPurchaseRequestFormToken()
+    setFormToken(token)
+  }
+
+  loadFormToken()
+}, [getPurchaseRequestFormToken])
+
   const minExpectedDate = getDateFromToday(0)
   const minExpectedDateObject = parseDateInputValue(minExpectedDate)
   const selectedDateLabel = formatSelectedDate(expectedDate)
@@ -129,6 +144,8 @@ const Form = () => {
     { label: "1 mois", value: getDateFromToday(30) },
   ]
 
+  
+
   const urgency = getUrgencyFromExpectedDate(expectedDate)
   const selectExpectedDate = (dateValue: string) => {
     setExpectedDate(dateValue)
@@ -136,54 +153,45 @@ const Form = () => {
     setIsDatePickerOpen(false)
   }
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    setSubmitError(null)
-    setSubmitSuccess(false)
+const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  e.preventDefault()
 
-    const trimmedDescription = description.trim()
+  setSubmitError(null)
+  setSubmitSuccess(false)
 
-    if (!name.trim()) {
-      setSubmitError("Le nom du demandeur est requis.")
-      return
-    }
-
-    if (!trimmedDescription) {
-      setSubmitError("La description de la demande est requise.")
-      return
-    }
-
-    if (!quantity || parseInt(quantity) < 1) {
-      setSubmitError("La quantité doit être d'au moins 1.")
-      return
-    }
-
-    const result = await createPurchaseRequest({
-      requested_by: name,
-      description: trimmedDescription,
-      quantity: parseInt(quantity),
-      reason: justification || undefined,
-      requested_unit_price: price ? parseFloat(price) : undefined,
-      requested_supplier: undefined,
-      product_link: link || undefined,
-      expected_date: expectedDate || undefined,
-    })
-
-    if (result) {
-      setSubmitSuccess(true)
-      setName("")
-      setDescription("")
-      setJustification("")
-      setPrice("")
-      setLink("")
-      setExpectedDate("")
-      setQuantity("1")
-      setTimeout(() => setSubmitSuccess(false), 3000)
-    } else {
-      setSubmitError(error || "Impossible de créer la demande d'achat.")
-    }
+  if (!formToken) {
+    setSubmitError("Problème lors de la créeation de la demande.")
+    console.error(error)
+    return
   }
 
+  const createdRequest = await createPurchaseRequest(
+    {
+      requested_by: name,
+      description,
+      quantity: Number(quantity),
+      reason: justification,
+      requested_unit_price: price ? Number(price) : null,
+      product_link: link || null,
+      expected_date: expectedDate || null,
+    },
+    formToken
+  )
+
+  if (!createdRequest) return
+
+  const newToken = await getPurchaseRequestFormToken()
+  setFormToken(newToken)
+
+  setName("")
+  setDescription("")
+  setJustification("")
+  setPrice("")
+  setLink("")
+  setExpectedDate("")
+  setSubmitError(null)
+  setSubmitSuccess(true)
+}
   return (
     <section className="w-full px-4 pb-10 pt-6 tablet:px-8">
       <form
@@ -444,6 +452,7 @@ const Form = () => {
           </button>
         </div>
       </form>
+      {submitSuccess && <p>La demande a bien été envoyée.</p>}
     </section>
   )
 }

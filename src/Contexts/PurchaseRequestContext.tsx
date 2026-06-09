@@ -18,6 +18,11 @@ export type PurchaseRequestStatus =
   | "purchased"
   | "cancelled"
 
+interface PurchaseRequestFormTokenResponse {
+  token: string
+  expires_at: string
+}
+
 export interface PurchaseRequest {
   id: number
 
@@ -61,9 +66,6 @@ reason: string | null
 
   created_at: string
   updated_at: string
-
-  requester_name?: string | null
-  requester_surname?: string | null
   buyer_name?: string | null
   buyer_surname?: string | null
   admin_name?: string | null
@@ -115,9 +117,11 @@ interface PurchaseRequestsContextType {
 
   fetchPurchaseRequests: (status?: PurchaseRequestStatus) => Promise<void>
   fetchPurchaseRequestById: (id: number) => Promise<PurchaseRequest | null>
-  createPurchaseRequest: (
-    payload: CreatePurchaseRequestPayload
-  ) => Promise<PurchaseRequest | null>
+getPurchaseRequestFormToken: () => Promise<string | null>
+createPurchaseRequest: (
+  payload: CreatePurchaseRequestPayload,
+  formToken: string
+) => Promise<PurchaseRequest | null>
   validateBuyerPrice: (
     id: number,
     payload: BuyerValidationPayload
@@ -224,34 +228,57 @@ export const PurchaseRequestsProvider = ({
     }
   }, [])
 
-  const createPurchaseRequest = useCallback(
-    async (payload: CreatePurchaseRequestPayload) => {
-      try {
-        setLoading(true)
-        setError(null)
+  const getPurchaseRequestFormToken = useCallback(async () => {
+  try {
+    setError(null)
 
-        const data = await request<PurchaseRequest>("/purchase-request", {
-          method: "POST",
-          body: JSON.stringify(payload),
-        })
+    const data = await request<PurchaseRequestFormTokenResponse>(
+      "/purchase-request/form-token"
+    )
 
-        setPurchaseRequests((prev) => [data, ...prev])
+    return data.token
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Erreur lors de la préparation du formulaire"
 
-        return data
-      } catch (error) {
-        const message =
-          error instanceof Error
-            ? error.message
-            : "Erreur lors de la création de la demande d'achat"
+    setError(message)
+    return null
+  }
+}, [])
 
-        setError(message)
-        return null
-      } finally {
-        setLoading(false)
-      }
-    },
-    []
-  )
+ const createPurchaseRequest = useCallback(
+  async (payload: CreatePurchaseRequestPayload, formToken: string) => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      const data = await request<PurchaseRequest>("/purchase-request", {
+        method: "POST",
+        headers: {
+          "x-purchase-request-form-token": formToken,
+        },
+        body: JSON.stringify(payload),
+      })
+
+      setPurchaseRequests((prev) => [data, ...prev])
+
+      return data
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Erreur lors de la création de la demande d'achat"
+
+      setError(message)
+      return null
+    } finally {
+      setLoading(false)
+    }
+  },
+  []
+)
 
   const validateBuyerPrice = useCallback(
     async (id: number, payload: BuyerValidationPayload) => {
@@ -413,20 +440,21 @@ export const PurchaseRequestsProvider = ({
 
   return (
     <PurchaseRequestsContext.Provider
-      value={{
-        purchaseRequests,
-        selectedPurchaseRequest,
-        loading,
-        error,
-        fetchPurchaseRequests,
-        fetchPurchaseRequestById,
-        createPurchaseRequest,
-        validateBuyerPrice,
-        saveAdminDecision,
-        markPurchaseRequestAsPurchased,
-        cancelPurchaseRequest,
-        clearSelectedPurchaseRequest,
-      }}
+   value={{
+  purchaseRequests,
+  selectedPurchaseRequest,
+  loading,
+  error,
+  fetchPurchaseRequests,
+  fetchPurchaseRequestById,
+  getPurchaseRequestFormToken,
+  createPurchaseRequest,
+  validateBuyerPrice,
+  saveAdminDecision,
+  markPurchaseRequestAsPurchased,
+  cancelPurchaseRequest,
+  clearSelectedPurchaseRequest,
+}}
     >
       {children}
     </PurchaseRequestsContext.Provider>
