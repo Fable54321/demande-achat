@@ -273,7 +273,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
               className={`${fieldControlClass} min-h-40 resize-y leading-6`}
               name="description"
               id="description"
-              placeholder="Décrir de façon claire le produit qui devra être acheté."
+              placeholder="Décrire de façon claire le produit qui devra être acheté."
               rows={5}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
