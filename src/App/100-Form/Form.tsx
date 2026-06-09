@@ -191,7 +191,12 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
   setLink("")
   setExpectedDate("")
   setSubmitError(null)
+
   setSubmitSuccess(true)
+
+  setTimeout(() => {
+    setSubmitSuccess(false)
+  }, 5000)
 }
   return (
     <section className="w-full px-4 pb-10 pt-6 tablet:px-8">
