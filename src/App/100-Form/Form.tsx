@@ -496,7 +496,7 @@ const createdRequest = await createPurchaseRequest(formData, formToken)
           <Field
             helpText="Produit, marque, modèle, dimensions, usage ou toute contrainte importante."
             icon={PackageCheck}
-            label="Description de la demande"
+            label="Description du produit demandé"
           >
             <textarea
               className={`${fieldControlClass} min-h-28 resize-y leading-6`}
