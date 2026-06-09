@@ -248,8 +248,8 @@ export const PurchaseRequestsProvider = ({
   }
 }, [])
 
- const createPurchaseRequest = useCallback(
-  async (payload: CreatePurchaseRequestPayload, formToken: string) => {
+const createPurchaseRequest = useCallback(
+  async (formData: FormData, formToken: string) => {
     try {
       setLoading(true)
       setError(null)
@@ -259,7 +259,7 @@ export const PurchaseRequestsProvider = ({
         headers: {
           "x-purchase-request-form-token": formToken,
         },
-        body: JSON.stringify(payload),
+        body: formData,
       })
 
       setPurchaseRequests((prev) => [data, ...prev])

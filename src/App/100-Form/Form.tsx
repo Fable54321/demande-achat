@@ -329,18 +329,30 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     return
   }
 
-  const createdRequest = await createPurchaseRequest(
-    {
-      requested_by: safeName,
-      description: safeDescription,
-      quantity: safeQuantity,
-      reason: safeJustification || null,
-      requested_unit_price: safePrice,
-      product_link: safeLink || null,
-      expected_date: safeExpectedDate || null,
-    },
-    formToken
-  )
+const formData = new FormData()
+
+formData.append("requested_by", safeName)
+formData.append("description", safeDescription)
+formData.append("quantity", String(safeQuantity))
+formData.append("reason", safeJustification || "")
+
+if (safePrice !== null) {
+  formData.append("requested_unit_price", String(safePrice))
+}
+
+if (safeLink) {
+  formData.append("product_link", safeLink)
+}
+
+if (safeExpectedDate) {
+  formData.append("expected_date", safeExpectedDate)
+}
+
+images.forEach((image) => {
+  formData.append("pictures", image)
+})
+
+const createdRequest = await createPurchaseRequest(formData, formToken)
 
   if (!createdRequest) return
 
