@@ -119,7 +119,7 @@ interface PurchaseRequestsContextType {
   fetchPurchaseRequestById: (id: number) => Promise<PurchaseRequest | null>
 getPurchaseRequestFormToken: () => Promise<string | null>
 createPurchaseRequest: (
-  payload: CreatePurchaseRequestPayload,
+  formData: FormData,
   formToken: string
 ) => Promise<PurchaseRequest | null>
   validateBuyerPrice: (
@@ -149,13 +149,18 @@ const request = async <T,>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> => {
+ const headers =
+  options.body instanceof FormData
+    ? options.headers
+    : {
+        "Content-Type": "application/json",
+        ...(options.headers || {}),
+      }
+
  const response = await fetch(`${API_URL}${path}`, {
   ...options,
   credentials: "include",
-  headers: {
-    "Content-Type": "application/json",
-    ...(options.headers || {}),
-  },
+  headers,
 })
 
   const data = await response.json().catch(() => null)

@@ -76,8 +76,13 @@ const parseDateInputValue = (dateValue: string) => {
 }
 
 const stripUnsafeText = (value: string, maxLength: number) =>
-  value
-    .replace(/[\u0000-\u001F\u007F]/g, "")
+  Array.from(value)
+    .filter((character) => {
+      const code = character.charCodeAt(0)
+
+      return code > 31 && code !== 127
+    })
+    .join("")
     .replace(/[<>]/g, "")
     .slice(0, maxLength)
 
