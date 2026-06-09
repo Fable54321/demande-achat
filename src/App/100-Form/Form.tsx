@@ -4,6 +4,7 @@ import {
   CheckCircle2,
   DollarSign,
   Hash,
+  ImagePlus,
   Link2,
   PackageCheck,
   Send,
@@ -41,6 +42,10 @@ const MAX_JUSTIFICATION_LENGTH = 1000
 const MAX_LINK_LENGTH = 2048
 const MAX_QUANTITY = 9999
 const MAX_PRICE = 999999.99
+
+const MAX_IMAGES = 5
+const MAX_IMAGE_SIZE_MB = 5
+const MAX_IMAGE_SIZE_BYTES = MAX_IMAGE_SIZE_MB * 1024 * 1024
 
 const toDateInputValue = (date: Date) => {
   const year = date.getFullYear()
@@ -183,6 +188,7 @@ const Form = () => {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [submitSuccess, setSubmitSuccess] = useState(false)
   const [companyWebsite, setCompanyWebsite] = useState("")
+  const [images, setImages] = useState<File[]>([])
 
   useEffect(() => {
   const loadFormToken = async () => {
@@ -219,6 +225,37 @@ const Form = () => {
     setCalendarMonth(getMonthStart(parseDateInputValue(dateValue)))
     setIsDatePickerOpen(false)
   }
+
+
+const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const selectedFiles = Array.from(e.target.files ?? [])
+
+  if (!selectedFiles.length) return
+
+  const validImages = selectedFiles.filter((file) => {
+    return file.type.startsWith("image/") && file.size <= MAX_IMAGE_SIZE_BYTES
+  })
+
+  if (validImages.length !== selectedFiles.length) {
+    setSubmitError(
+      `Certaines images ont été ignorées. Maximum ${MAX_IMAGE_SIZE_MB} MB par image.`,
+    )
+  }
+
+  setImages((currentImages) => {
+    const combinedImages = [...currentImages, ...validImages]
+
+    return combinedImages.slice(0, MAX_IMAGES)
+  })
+
+  e.target.value = ""
+}
+
+const removeImage = (indexToRemove: number) => {
+  setImages((currentImages) =>
+    currentImages.filter((_, index) => index !== indexToRemove),
+  )
+}  
 
 const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
   e.preventDefault()
@@ -317,7 +354,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
   setLink("")
   setExpectedDate("")
   setSubmitError(null)
-
+  setImages([])
   setSubmitSuccess(true)
 
   setTimeout(() => {
@@ -487,6 +524,68 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
               />
             </Field>
           </div>
+
+          <Field
+  helpText={`Ajoutez jusqu'à ${MAX_IMAGES} photos pour aider l'acheteur à identifier le produit.`}
+  icon={ImagePlus}
+  label="Photos"
+  optional
+>
+  <div className="flex flex-col gap-3">
+    <label
+      className={`flex min-h-28 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-secondary/30 bg-tertiary/50 px-4 py-5 text-center transition hover:border-secondary hover:bg-primary/10 ${
+        images.length >= MAX_IMAGES ? "cursor-not-allowed opacity-60" : ""
+      }`}
+    >
+      <ImagePlus className="mb-2 text-secondary" size={28} aria-hidden="true" />
+      <span className="text-sm font-bold text-secondary">
+        Ajouter des photos
+      </span>
+      <span className="mt-1 text-xs text-slate-500">
+        {images.length}/{MAX_IMAGES} sélectionnées · Maximum {MAX_IMAGE_SIZE_MB} MB par image
+      </span>
+
+      <input
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        disabled={images.length >= MAX_IMAGES}
+        onChange={handleImageChange}
+      />
+    </label>
+
+    {images.length > 0 && (
+      <div className="grid grid-cols-2 gap-3 tablet:grid-cols-5">
+        {images.map((image, index) => (
+          <div
+            key={`${image.name}-${image.lastModified}-${index}`}
+            className="relative overflow-hidden rounded-lg border border-secondary/15 bg-white shadow-sm"
+          >
+            <img
+              src={URL.createObjectURL(image)}
+              alt={`Photo sélectionnée ${index + 1}`}
+              className="h-28 w-full object-cover"
+            />
+
+            <button
+              type="button"
+              className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-full bg-white/90 text-slate-700 shadow transition hover:bg-red-50 hover:text-red-700"
+              onClick={() => removeImage(index)}
+              aria-label={`Retirer la photo ${index + 1}`}
+            >
+              <X size={16} aria-hidden="true" />
+            </button>
+
+            <div className="truncate px-2 py-1.5 text-xs text-slate-500">
+              {image.name}
+            </div>
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+</Field>
 
           <div className="rounded-xl border border-secondary/15 bg-tertiary/70 p-4 tablet:p-5">
             <Field
