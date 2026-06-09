@@ -1,8 +1,6 @@
 import {
   AlertCircle,
   Calendar,
-  ChevronLeft,
-  ChevronRight,
   CheckCircle2,
   DollarSign,
   Hash,
@@ -17,6 +15,8 @@ import {
 import { useState, type FormEvent, type ReactNode } from "react"
 import { usePurchaseRequests } from "../../Contexts/PurchaseRequestContext"
 import { getUrgencyFromExpectedDate } from "./getUrgencyFromExpectedDate"
+import { getMonthStart} from "./Utils/getMonthStartandDays"
+import DatePicker from "./DatePicker"
 
 const dateFormatter = new Intl.DateTimeFormat("fr-CA", {
   weekday: "long",
@@ -30,7 +30,7 @@ const monthFormatter = new Intl.DateTimeFormat("fr-CA", {
   year: "numeric",
 })
 
-const weekdayLabels = ["dim.", "lun.", "mar.", "mer.", "jeu.", "ven.", "sam."]
+
 
 const fieldControlClass =
   "w-full rounded-lg border border-secondary/25 bg-white px-3.5 py-3 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-secondary focus:ring-4 focus:ring-primary/25"
@@ -63,26 +63,9 @@ const parseDateInputValue = (dateValue: string) => {
   return new Date(year, month - 1, day)
 }
 
-const getMonthStart = (date: Date) => {
-  const monthStart = new Date(date)
-  monthStart.setDate(1)
-  monthStart.setHours(0, 0, 0, 0)
 
-  return monthStart
-}
 
-const getCalendarDays = (monthDate: Date) => {
-  const firstDay = getMonthStart(monthDate)
-  const firstVisibleDay = new Date(firstDay)
-  firstVisibleDay.setDate(firstVisibleDay.getDate() - firstDay.getDay())
 
-  return Array.from({ length: 42 }, (_, index) => {
-    const date = new Date(firstVisibleDay)
-    date.setDate(firstVisibleDay.getDate() + index)
-
-    return date
-  })
-}
 
 type FieldProps = {
   children: ReactNode
@@ -138,13 +121,7 @@ const Form = () => {
   const minExpectedDate = getDateFromToday(0)
   const minExpectedDateObject = parseDateInputValue(minExpectedDate)
   const selectedDateLabel = formatSelectedDate(expectedDate)
-  const calendarDays = getCalendarDays(calendarMonth)
-  const previousCalendarMonth = new Date(calendarMonth)
-  previousCalendarMonth.setMonth(previousCalendarMonth.getMonth() - 1)
-  const nextCalendarMonth = new Date(calendarMonth)
-  nextCalendarMonth.setMonth(nextCalendarMonth.getMonth() + 1)
-  const canGoToPreviousMonth =
-    previousCalendarMonth >= getMonthStart(minExpectedDateObject)
+
   const quickDateOptions = [
     { label: "Demain", value: getDateFromToday(1) },
     { label: "1 semaine", value: getDateFromToday(7) },
@@ -251,14 +228,13 @@ const Form = () => {
           )}
 
           <div className="grid gap-5 tablet:grid-cols-2">
-            <Field icon={User} label="Identifiant utilisateur">
+            <Field icon={User} label="Nom du demandeur">
               <input
                 className={fieldControlClass}
-                type="number"
+                type="text"
                 id="name"
                 name="name"
-                min="1"
-                placeholder="Ex. 42"
+                placeholder="Nom du demandeur"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
@@ -399,71 +375,15 @@ const Form = () => {
                     </button>
 
                     {isDatePickerOpen && (
-                      <div
-                        className="absolute left-0 top-[calc(100%+0.5rem)] z-20 w-full rounded-lg border border-secondary/20 bg-white p-3 shadow-xl shadow-secondary/15 tablet:max-w-sm"
-                        role="dialog"
-                        aria-label="Calendrier de date attendue"
-                      >
-                        <div className="mb-3 flex items-center justify-between gap-2">
-                          <button
-                            type="button"
-                            className="grid h-9 w-9 place-items-center rounded-lg border border-secondary/20 text-secondary transition hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-40"
-                            onClick={() => setCalendarMonth(previousCalendarMonth)}
-                            disabled={!canGoToPreviousMonth}
-                            aria-label="Mois precedent"
-                          >
-                            <ChevronLeft size={18} aria-hidden="true" />
-                          </button>
-                          <p className="text-sm font-black capitalize text-slate-900">
-                            {monthFormatter.format(calendarMonth)}
-                          </p>
-                          <button
-                            type="button"
-                            className="grid h-9 w-9 place-items-center rounded-lg border border-secondary/20 text-secondary transition hover:bg-primary/10"
-                            onClick={() => setCalendarMonth(nextCalendarMonth)}
-                            aria-label="Mois suivant"
-                          >
-                            <ChevronRight size={18} aria-hidden="true" />
-                          </button>
-                        </div>
-
-                        <div className="grid grid-cols-7 gap-1 text-center">
-                          {weekdayLabels.map((weekday) => (
-                            <span
-                              key={weekday}
-                              className="py-1 text-[0.7rem] font-bold uppercase text-slate-500"
-                            >
-                              {weekday}
-                            </span>
-                          ))}
-                          {calendarDays.map((date) => {
-                            const dateValue = toDateInputValue(date)
-                            const isCurrentMonth =
-                              date.getMonth() === calendarMonth.getMonth()
-                            const isSelected = expectedDate === dateValue
-                            const isDisabled = date < minExpectedDateObject
-
-                            return (
-                              <button
-                                type="button"
-                                key={dateValue}
-                                className={`grid h-9 place-items-center rounded-lg text-sm font-bold transition ${
-                                  isSelected
-                                    ? "bg-secondary text-white shadow-md shadow-secondary/20"
-                                    : "text-slate-800 hover:bg-primary/10"
-                                } ${
-                                  isCurrentMonth ? "" : "text-slate-300"
-                                } disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-transparent`}
-                                onClick={() => selectExpectedDate(dateValue)}
-                                disabled={isDisabled}
-                                aria-pressed={isSelected}
-                              >
-                                {date.getDate()}
-                              </button>
-                            )
-                          })}
-                        </div>
-                      </div>
+                      <DatePicker 
+                      setCalendarMonth={setCalendarMonth}
+                      calendarMonth={calendarMonth}
+                      monthFormatter={monthFormatter}
+                      expectedDate={expectedDate}
+                      minExpectedDateObject={minExpectedDateObject}
+                      selectExpectedDate={selectExpectedDate}
+                      toDateInputValue={toDateInputValue}
+                      />
                     )}
                   </div>
 
