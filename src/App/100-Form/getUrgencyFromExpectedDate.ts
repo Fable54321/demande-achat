@@ -10,6 +10,14 @@ export const getUrgencyFromExpectedDate = (dateValue: string) => {
   const differenceInMs = selectedDate.getTime() - today.getTime()
   const differenceInDays = Math.ceil(differenceInMs / (1000 * 60 * 60 * 24))
 
+  if (differenceInDays <=2) {
+    return {
+      label: "Au plus vite",
+      value: "Au plus vite",
+      message: "Requis dans 2 jours ou moins",
+    }
+  }
+
   if (differenceInDays <= 7) {
     return {
       label: "Urgent",
