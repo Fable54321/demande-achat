@@ -149,14 +149,14 @@ const request = async <T,>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> => {
-  const response = await fetch(`${API_URL}${path}`, {
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
-    ...options,
-  })
+ const response = await fetch(`${API_URL}${path}`, {
+  ...options,
+  credentials: "include",
+  headers: {
+    "Content-Type": "application/json",
+    ...(options.headers || {}),
+  },
+})
 
   const data = await response.json().catch(() => null)
 

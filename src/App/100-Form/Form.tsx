@@ -123,6 +123,7 @@ const Form = () => {
   )
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [submitSuccess, setSubmitSuccess] = useState(false)
+  const [companyWebsite, setCompanyWebsite] = useState("")
 
   useEffect(() => {
   const loadFormToken = async () => {
@@ -263,6 +264,15 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
               />
             </Field>
           </div>
+        <input
+  type="text"
+  name="companyWebsite"
+  value={companyWebsite}
+  onChange={(e) => setCompanyWebsite(e.target.value)}
+  className="hidden"
+  tabIndex={-1}
+  autoComplete="off"
+/>
 
           <Field
             helpText="Produit, marque, modèle, dimensions, usage ou toute contrainte importante."
@@ -445,7 +455,12 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
           <button
             type="submit"
             disabled={loading || !formToken}
-            className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-secondary px-6 text-sm font-black text-white shadow-lg shadow-secondary/20 transition hover:bg-[#3f610f] focus:outline-none focus:ring-4 focus:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-55"
+            className="inline-flex h-12 items-center justify-center gap-2 rounded-lg
+             bg-secondary px-6 text-sm font-black text-white shadow-lg shadow-secondary/20 transition 
+             hover:bg-[#3f610f] 
+             hover:cursor-pointer
+             focus:outline-none focus:ring-4
+             focus:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-55"
           >
             <Send size={18} aria-hidden="true" />
             {loading ? "Envoi en cours..." : "Soumettre la demande"}
