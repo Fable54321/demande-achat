@@ -444,7 +444,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
           </p>
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || !formToken}
             className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-secondary px-6 text-sm font-black text-white shadow-lg shadow-secondary/20 transition hover:bg-[#3f610f] focus:outline-none focus:ring-4 focus:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-55"
           >
             <Send size={18} aria-hidden="true" />
