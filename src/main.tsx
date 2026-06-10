@@ -24,10 +24,6 @@ const router = createBrowserRouter([
     path: "/requete/:purchaseRequestId/validation-prix/:token",
     element: <PriceConfirmation />
   },
-  {
-    path: "/approbation-prix/:id",
-    element: <PriceConfirmation />
-  }
 ]);
 
 createRoot(document.getElementById('root')!).render(
