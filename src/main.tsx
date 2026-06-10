@@ -6,6 +6,7 @@ import Form from './App/100-Form/Form';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { PurchaseRequestsProvider } from './Contexts/PurchaseRequestContext';
 import PriceConfirmation from './App/101--PriceConfirmation/PriceConfirmation';
+import AdminApproval from './App/102--AdminApproval/AdminApproval';
 
 
 const router = createBrowserRouter([
@@ -24,6 +25,10 @@ const router = createBrowserRouter([
     path: "/requete/:purchaseRequestId/validation-prix/:token",
     element: <PriceConfirmation />
   },
+  {
+    path: "/requete/:id/approbation-achat/:token",
+    element: <AdminApproval />
+  }
  
 ]);
 

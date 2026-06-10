@@ -1,0 +1,177 @@
+import {
+  CheckCircle2,
+  DollarSign,
+  PackageCheck,
+  Send,
+  ShoppingBag,
+  User,
+} from "lucide-react"
+import { useEffect, useState } from "react"
+import { useParams } from "react-router-dom"
+import { usePurchaseRequests } from "../../Contexts/PurchaseRequestContext"
+
+
+
+const formatCurrency = (value: number) =>
+  new Intl.NumberFormat("fr-CA", {
+    currency: "CAD",
+    style: "currency",
+  }).format(value)
+
+const AdminApproval = () => {
+  const [submitSuccess, setSubmitSuccess] = useState(false)
+
+  const confirmedUnitPrice = ""
+  const confirmedSupplier = ""
+  const buyerNote = ""
+
+  const { id, token } = useParams<{
+  id: string
+  token: string
+}>()
+
+  const { fetchPurchaseRequestById, selectedPurchaseRequest, validateBuyerPrice } = usePurchaseRequests();
+
+useEffect(() => {fetchPurchaseRequestById(Number(id));}, [id]);
+
+useEffect(()=> {console.log(selectedPurchaseRequest)}, [selectedPurchaseRequest]);
+
+  
+
+const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  e.preventDefault()
+
+  if (!selectedPurchaseRequest || !id || !token) return
+
+  const existingUnitPrice = selectedPurchaseRequest.requested_unit_price
+
+  const finalConfirmedUnitPrice =
+    confirmedUnitPrice.trim() === ""
+      ? existingUnitPrice
+      : Number(confirmedUnitPrice)
+
+  const payload = {
+    buyer_user_id: 1, // temporary, or your buyer user id
+    buyer_confirmed_unit_price: finalConfirmedUnitPrice,
+    buyer_confirmed_supplier: confirmedSupplier.trim() || null,
+    buyer_note: buyerNote.trim() || null,
+  }
+
+  const updatedRequest = await validateBuyerPrice(Number(id), token, payload)
+
+  if (updatedRequest) {
+    setSubmitSuccess(true)
+  }
+}
+
+  return (
+    <section className="w-full px-4 pb-10 pt-6 tablet:px-8">
+      <form
+        onSubmit={handleSubmit}
+        className="mx-auto flex w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-secondary/15 bg-white shadow-2xl shadow-secondary/10"
+      >
+        <div className="relative overflow-hidden border-b border-secondary/15 bg-[#eef4e8] px-5 py-5 shadow-[inset_0_-1px_0_rgba(75,115,18,0.08)] tablet:px-8">
+          <div className="flex flex-col gap-4 tablet:flex-row tablet:items-center tablet:justify-between">
+            <div className="flex items-center gap-4">
+              <span className="grid h-12 w-12 place-items-center rounded-xl bg-secondary text-white shadow-lg shadow-secondary/25">
+                <ShoppingBag size={24} aria-hidden="true" />
+              </span>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-secondary">
+                  Approbation d'achat par l'administration
+                </p>
+                <h2 className="text-2xl font-black text-slate-950">
+                  Approbation pour achat
+                </h2>
+              </div>
+            </div>
+            <p className="max-w-sm text-sm leading-6 text-slate-600">
+              S'assurer que la demande d'achat est justifiée.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-5 px-5 py-6 tablet:px-8">
+          {submitSuccess && (
+            <div className="flex items-start gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+              <CheckCircle2 className="mt-0.5 shrink-0" size={18} />
+              <span>Le prix demandé a ete confirmé.</span>
+            </div>
+          )}
+
+          {selectedPurchaseRequest && 
+        
+          <div className="rounded-xl border border-secondary/15 bg-tertiary/70 p-4 tablet:p-5">
+            <div className="flex items-start gap-3">
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-secondary text-white shadow-sm shadow-secondary/20">
+                <PackageCheck size={22} aria-hidden="true" />
+              </span>
+              <div className=" min-w-0 flex flex-col gap-2">
+                <p className="font-bold text-black text-[1.1em]">Demande a vérifier</p>
+                
+                   
+                  {selectedPurchaseRequest?.description && <p className="mt-1 ml-2 leading-6 text-slate-900"><span className="font-bold">Produit:</span> <br/> {selectedPurchaseRequest.description}</p>}
+                
+                {selectedPurchaseRequest?.reason && <p className="mt-1 ml-2 leading-6 text-slate-900" ><span className="font-bold">Justification:</span> <br/> {selectedPurchaseRequest.reason}</p>}
+              </div>
+            </div>
+
+            <dl className="mt-5 flex flex-col gap-3 text-sm ">
+             <div className="flex gap-3 w-full">  
+              <div className="rounded-lg border border-secondary/15 bg-white px-3 py-2 shadow-sm flex-1">
+                <dt className="flex items-center gap-2 font-bold text-secondary">
+                  <User size={16} aria-hidden="true" />
+                  Demandeur
+                </dt>
+                <dd className="mt-1 text-slate-700">
+                  {selectedPurchaseRequest?.requested_by && selectedPurchaseRequest.requested_by}
+                </dd>
+              </div>
+              <div className="rounded-lg border border-secondary/15 bg-white px-3 py-2 shadow-sm flex-1">
+                <dt className="font-bold text-secondary">Quantité</dt>
+                <dd className="mt-1 text-slate-700">
+                  {selectedPurchaseRequest?.quantity && selectedPurchaseRequest.quantity}
+                </dd>
+              </div>
+             </div>
+             <div className="flex gap-3 w-full"> 
+              <div className="rounded-lg border border-secondary/15 bg-white px-3 py-2 shadow-sm flex-1">
+                <dt className="flex items-center gap-2 font-bold text-secondary">
+                  <DollarSign size={16} aria-hidden="true" />
+                  Prix unitaire (confirmé par l'acheteur)
+                </dt>
+                <dd className="mt-1 text-slate-700">
+                  { selectedPurchaseRequest?.buyer_confirmed_unit_price && formatCurrency(selectedPurchaseRequest.buyer_confirmed_unit_price)}
+                </dd>
+              </div>
+              <div className="rounded-lg border border-secondary/15 bg-white px-3 py-2 shadow-sm flex-1">
+                <dt className="font-bold text-secondary">Prix total (confirmé par l'acheteur)</dt>
+                <dd className="mt-1 text-slate-700">
+                  {selectedPurchaseRequest?.buyer_confirmed_total_price &&   formatCurrency(selectedPurchaseRequest.buyer_confirmed_total_price)}
+                </dd>
+              </div>
+              </div> 
+            </dl>
+          </div>
+}
+          
+         
+        </div>
+
+        <div className="flex flex-col gap-3 border-t border-secondary/10 bg-slate-50 px-5 py-4 tablet:flex-row tablet:items-center tablet:justify-between tablet:px-8">
+          
+
+          <button
+            type="submit"
+            className="inline-flex h-12 mx-auto items-center justify-center gap-2 rounded-lg bg-secondary px-6 text-sm font-black text-white shadow-lg shadow-secondary/20 transition hover:cursor-pointer hover:bg-[#3f610f] focus:outline-none focus:ring-4 focus:ring-primary/30"
+          >
+            <Send size={18} aria-hidden="true" />
+            Confirmer la décision
+          </button>
+        </div>
+      </form>
+    </section>
+  )
+}
+
+export default AdminApproval
