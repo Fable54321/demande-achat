@@ -5,6 +5,7 @@ import App from './App/App';
 import Form from './App/100-Form/Form';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { PurchaseRequestsProvider } from './Contexts/PurchaseRequestContext';
+import PriceConfirmation from './App/101--PriceConfirmation/PriceConfirmation';
 
 
 const router = createBrowserRouter([
@@ -16,8 +17,17 @@ const router = createBrowserRouter([
         index: true,
         element: <Form />,
       },
+
     ]
   },
+  {
+    path: "/requete/:purchaseRequestId/validation-prix/:token",
+    element: <PriceConfirmation />
+  },
+  {
+    path: "/approbation-prix/:id",
+    element: <PriceConfirmation />
+  }
 ]);
 
 createRoot(document.getElementById('root')!).render(
