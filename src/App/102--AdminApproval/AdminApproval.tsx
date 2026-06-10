@@ -21,16 +21,12 @@ const formatCurrency = (value: number) =>
 const AdminApproval = () => {
   const [submitSuccess, setSubmitSuccess] = useState(false)
 
-  const confirmedUnitPrice = ""
-  const confirmedSupplier = ""
-  const buyerNote = ""
-
   const { id, token } = useParams<{
   id: string
   token: string
 }>()
 
-  const { fetchPurchaseRequestById, selectedPurchaseRequest, validateBuyerPrice } = usePurchaseRequests();
+  const { fetchPurchaseRequestById, selectedPurchaseRequest, saveAdminDecision } = usePurchaseRequests();
 
 useEffect(() => {fetchPurchaseRequestById(Number(id));}, [id]);
 
@@ -43,21 +39,14 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 
   if (!selectedPurchaseRequest || !id || !token) return
 
-  const existingUnitPrice = selectedPurchaseRequest.requested_unit_price
-
-  const finalConfirmedUnitPrice =
-    confirmedUnitPrice.trim() === ""
-      ? existingUnitPrice
-      : Number(confirmedUnitPrice)
-
   const payload = {
-    buyer_user_id: 1, // temporary, or your buyer user id
-    buyer_confirmed_unit_price: finalConfirmedUnitPrice,
-    buyer_confirmed_supplier: confirmedSupplier.trim() || null,
-    buyer_note: buyerNote.trim() || null,
+    admin_user_id: 1, // temporary, or your admin user id
+    approved: true,
+    admin_note: null,
+    rejection_reason: null,
   }
 
-  const updatedRequest = await validateBuyerPrice(Number(id), token, payload)
+  const updatedRequest = await saveAdminDecision(Number(id), token, payload)
 
   if (updatedRequest) {
     setSubmitSuccess(true)

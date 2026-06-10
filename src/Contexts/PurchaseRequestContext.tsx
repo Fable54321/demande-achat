@@ -129,6 +129,7 @@ createPurchaseRequest: (
   ) => Promise<PurchaseRequest | null>
   saveAdminDecision: (
     id: number,
+    token: string,
     payload: AdminDecisionPayload
   ) => Promise<PurchaseRequest | null>
   markPurchaseRequestAsPurchased: (
@@ -325,13 +326,13 @@ const createPurchaseRequest = useCallback(
   )
 
   const saveAdminDecision = useCallback(
-    async (id: number, payload: AdminDecisionPayload) => {
+    async (id: number, token: string, payload: AdminDecisionPayload) => {
       try {
         setLoading(true)
         setError(null)
 
         const data = await request<PurchaseRequest>(
-          `/purchase-request/${id}/admin-decision`,
+          `/purchase-request/${id}/admin-decision/${encodeURIComponent(token)}`,
           {
             method: "PATCH",
             body: JSON.stringify(payload),
