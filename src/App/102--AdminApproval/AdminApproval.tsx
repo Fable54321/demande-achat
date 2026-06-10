@@ -107,7 +107,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
                 <PackageCheck size={22} aria-hidden="true" />
               </span>
               <div className=" min-w-0 flex flex-col gap-2">
-                <p className="font-bold text-black text-[1.1em]">Demande a vérifier</p>
+                <p className="font-bold text-black text-[1.1em]">Demande à vérifier</p>
                 
                    
                   {selectedPurchaseRequest?.description && <p className="mt-1 ml-2 leading-6 text-slate-900"><span className="font-bold">Produit:</span> <br/> {selectedPurchaseRequest.description}</p>}
