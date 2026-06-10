@@ -8,14 +8,9 @@ import {
 } from "lucide-react"
 import { useEffect, useState } from "react"
 import { useParams } from "react-router-dom"
+import { usePurchaseRequests } from "../../Contexts/PurchaseRequestContext"
 
-const hardcodedRequest = {
-  requestedBy: "Jean Tremblay",
-  description:
-    "Ceci est un exemple de description de produit. La vraie description sera chargee avec l'identifiant de la demande plus tard.",
-  quantity: 2,
-  unitPrice: 1000,
-}
+
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("fr-CA", {
@@ -27,16 +22,48 @@ const PriceConfirmation = () => {
   const [hasConfirmed, setHasConfirmed] = useState(false)
   const [submitSuccess, setSubmitSuccess] = useState(false)
 
-  const { id } = useParams();
+  const [confirmedUnitPrice, setConfirmedUnitPrice] = useState("")
+const [confirmedSupplier, setConfirmedSupplier] = useState("")
+const [buyerNote, setBuyerNote] = useState("")
 
-useEffect(() => {console.log(id)},[id])
+  const { purchaseRequestId: id, token } = useParams<{
+  purchaseRequestId: string
+  token: string
+}>()
 
-  const totalPrice = hardcodedRequest.quantity * hardcodedRequest.unitPrice
+  const { fetchPurchaseRequestById, selectedPurchaseRequest, validateBuyerPrice } = usePurchaseRequests();
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
+useEffect(() => {fetchPurchaseRequestById(Number(id));}, [id]);
+
+useEffect(()=> {console.log(selectedPurchaseRequest)}, [selectedPurchaseRequest]);
+
+  
+
+const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  e.preventDefault()
+
+  if (!selectedPurchaseRequest || !id || !token) return
+
+  const existingUnitPrice = selectedPurchaseRequest.requested_unit_price
+
+  const finalConfirmedUnitPrice =
+    confirmedUnitPrice.trim() === ""
+      ? existingUnitPrice
+      : Number(confirmedUnitPrice)
+
+  const payload = {
+    buyer_user_id: 1, // temporary, or your buyer user id
+    buyer_confirmed_unit_price: finalConfirmedUnitPrice,
+    buyer_confirmed_supplier: confirmedSupplier.trim() || null,
+    buyer_note: buyerNote.trim() || null,
+  }
+
+  const updatedRequest = await validateBuyerPrice(Number(id), token, payload)
+
+  if (updatedRequest) {
     setSubmitSuccess(true)
   }
+}
 
   return (
     <section className="w-full px-4 pb-10 pt-6 tablet:px-8">
@@ -60,7 +87,7 @@ useEffect(() => {console.log(id)},[id])
               </div>
             </div>
             <p className="max-w-sm text-sm leading-6 text-slate-600">
-              Verifiez simplement que le prix demande semble raisonnable.
+              Vérifiez simplement que le prix proposé semble raisonnable.
             </p>
           </div>
         </div>
@@ -69,20 +96,24 @@ useEffect(() => {console.log(id)},[id])
           {submitSuccess && (
             <div className="flex items-start gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
               <CheckCircle2 className="mt-0.5 shrink-0" size={18} />
-              <span>Le prix demande a ete confirme.</span>
+              <span>Le prix demandé a ete confirmé.</span>
             </div>
           )}
 
+          {selectedPurchaseRequest && 
+          <>
           <div className="rounded-xl border border-secondary/15 bg-tertiary/70 p-4 tablet:p-5">
             <div className="flex items-start gap-3">
               <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-secondary text-white shadow-sm shadow-secondary/20">
                 <PackageCheck size={22} aria-hidden="true" />
               </span>
-              <div className="min-w-0">
-                <p className="font-bold text-slate-900">Demande a verifier</p>
-                <p className="mt-1 text-sm leading-6 text-slate-600">
-                  {hardcodedRequest.description}
-                </p>
+              <div className=" min-w-0 flex flex-col gap-2">
+                <p className="font-bold text-black text-[1.1em]">Demande a vérifier</p>
+                
+                   
+                  {selectedPurchaseRequest?.description && <p className="mt-1 ml-2 leading-6 text-slate-900"><span className="font-bold">Produit:</span> <br/> {selectedPurchaseRequest.description}</p>}
+                
+                {selectedPurchaseRequest?.reason && <p className="mt-1 ml-2 leading-6 text-slate-900" ><span className="font-bold">Justification:</span> <br/> {selectedPurchaseRequest.reason}</p>}
               </div>
             </div>
 
@@ -93,13 +124,13 @@ useEffect(() => {console.log(id)},[id])
                   Demandeur
                 </dt>
                 <dd className="mt-1 text-slate-700">
-                  {hardcodedRequest.requestedBy}
+                  {selectedPurchaseRequest?.requested_by && selectedPurchaseRequest.requested_by}
                 </dd>
               </div>
               <div className="rounded-lg border border-secondary/15 bg-white px-3 py-2 shadow-sm">
-                <dt className="font-bold text-secondary">Quantite</dt>
+                <dt className="font-bold text-secondary">Quantité</dt>
                 <dd className="mt-1 text-slate-700">
-                  {hardcodedRequest.quantity}
+                  {selectedPurchaseRequest?.quantity && selectedPurchaseRequest.quantity}
                 </dd>
               </div>
               <div className="rounded-lg border border-secondary/15 bg-white px-3 py-2 shadow-sm">
@@ -108,17 +139,74 @@ useEffect(() => {console.log(id)},[id])
                   Prix unitaire
                 </dt>
                 <dd className="mt-1 text-slate-700">
-                  {formatCurrency(hardcodedRequest.unitPrice)}
+                  { selectedPurchaseRequest?.requested_unit_price && formatCurrency(selectedPurchaseRequest.requested_unit_price)}
                 </dd>
               </div>
               <div className="rounded-lg border border-secondary/15 bg-white px-3 py-2 shadow-sm">
-                <dt className="font-bold text-secondary">Total demande</dt>
+                <dt className="font-bold text-secondary">Total demandé</dt>
                 <dd className="mt-1 text-slate-700">
-                  {formatCurrency(totalPrice)}
+                  {selectedPurchaseRequest?.requested_total_price &&   formatCurrency(selectedPurchaseRequest.requested_total_price)}
                 </dd>
               </div>
             </dl>
           </div>
+          
+          <div className="grid gap-4 tablet:grid-cols-2">
+<div className="col-span-2 flex items-start gap-3 rounded-lg border border-secondary/15 bg-tertiary/70 px-4 py-3 text-sm leading-6 text-slate-600">
+  <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-secondary/10 text-secondary">
+    i
+  </span>
+
+  <p>
+    La section ci-dessous n'est pas obligatoire, mais permet de garder en banque
+    certaines infos qui auraient déjà été trouvées.
+  </p>
+</div>
+
+  <label className="flex flex-col gap-2 text-sm font-bold text-slate-700">
+    Prix unitaire différent
+    <input
+      type="number"
+      min="0"
+      step="0.01"
+      value={confirmedUnitPrice}
+      onChange={(e) => setConfirmedUnitPrice(e.target.value)}
+      placeholder={
+        selectedPurchaseRequest?.requested_unit_price
+          ? String(selectedPurchaseRequest.requested_unit_price)
+          : "Ex: 25.00"
+      }
+      className="h-12 rounded-lg border border-secondary/20 bg-white px-3 text-sm font-semibold text-slate-800 shadow-sm outline-none transition focus:border-secondary focus:ring-4 focus:ring-primary/20"
+    />
+    <span className="text-xs font-normal text-slate-500">
+      Laissez vide pour confirmer le prix demandé.
+    </span>
+  </label>
+
+  <label className="flex flex-col gap-2 text-sm font-bold text-slate-700">
+    Fournisseur potentiel trouvé
+    <input
+      type="text"
+      value={confirmedSupplier}
+      onChange={(e) => setConfirmedSupplier(e.target.value)}
+      placeholder="Optionnel"
+      className="h-12 rounded-lg border border-secondary/20 bg-white px-3 text-sm font-semibold text-slate-800 shadow-sm outline-none transition focus:border-secondary focus:ring-4 focus:ring-primary/20"
+    />
+  </label>
+</div>
+
+<label className="flex flex-col gap-2 text-sm font-bold text-slate-700">
+  Note de l'acheteur
+  <textarea
+    value={buyerNote}
+    onChange={(e) => setBuyerNote(e.target.value)}
+    placeholder="Optionnel"
+    rows={3}
+    className="rounded-lg border border-secondary/20 bg-white px-3 py-3 text-sm font-semibold text-slate-800 shadow-sm outline-none transition focus:border-secondary focus:ring-4 focus:ring-primary/20"
+  />
+</label>
+        </>  
+          }
 
           <label className="group flex cursor-pointer items-start gap-3 rounded-lg border border-secondary/15 bg-white px-4 py-3 text-sm text-slate-700 shadow-sm transition hover:border-secondary/35 hover:bg-primary/10">
             <input
@@ -145,8 +233,8 @@ useEffect(() => {console.log(id)},[id])
               </svg>
             </span>
             <span className="leading-6">
-              Je confirme que le prix demande semble raisonnable pour le produit
-              decrit.
+              Je confirme que le prix proposé semble raisonnable pour le produit
+              demandé.
             </span>
           </label>
         </div>

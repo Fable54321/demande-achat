@@ -124,6 +124,7 @@ createPurchaseRequest: (
 ) => Promise<PurchaseRequest | null>
   validateBuyerPrice: (
     id: number,
+    token: string,
     payload: BuyerValidationPayload
   ) => Promise<PurchaseRequest | null>
   saveAdminDecision: (
@@ -286,13 +287,13 @@ const createPurchaseRequest = useCallback(
 )
 
   const validateBuyerPrice = useCallback(
-    async (id: number, payload: BuyerValidationPayload) => {
+  async (id: number, token: string, payload: BuyerValidationPayload) => {
       try {
         setLoading(true)
         setError(null)
 
         const data = await request<PurchaseRequest>(
-          `/purchase-request/${id}/buyer-validation`,
+          `/purchase-request/${id}/buyer-validation/${encodeURIComponent(token)}`,
           {
             method: "PATCH",
             body: JSON.stringify(payload),
