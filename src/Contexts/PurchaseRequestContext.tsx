@@ -96,7 +96,6 @@ export interface BuyerValidationPayload {
 }
 
 export interface AdminDecisionPayload {
-  admin_user_id: number
   approved: boolean
   admin_note?: string | null
   rejection_reason?: string | null

@@ -6,9 +6,10 @@ import {
   ShoppingBag,
   User,
 } from "lucide-react"
-import { useEffect, useState } from "react"
+
 import { useParams } from "react-router-dom"
 import { usePurchaseRequests } from "../../Contexts/PurchaseRequestContext"
+import { useEffect, useState } from "react"
 
 
 
@@ -26,12 +27,14 @@ const AdminApproval = () => {
   token: string
 }>()
 
-  const { fetchPurchaseRequestById, selectedPurchaseRequest, saveAdminDecision } = usePurchaseRequests();
+  const { selectedPurchaseRequest, saveAdminDecision, fetchPurchaseRequestById } = usePurchaseRequests();
+  const [isApproved, setIsApproved] = useState<boolean>(false);
+  const [note, setNote] = useState("");
+  const [refuseReason, setRefuseReason] = useState("");
 
-useEffect(() => {fetchPurchaseRequestById(Number(id));}, [id]);
-
-useEffect(()=> {console.log(selectedPurchaseRequest)}, [selectedPurchaseRequest]);
-
+useEffect(() => {
+    fetchPurchaseRequestById(Number(id));
+},[selectedPurchaseRequest]);
   
 
 const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -40,10 +43,9 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
   if (!selectedPurchaseRequest || !id || !token) return
 
   const payload = {
-    admin_user_id: 1, // temporary, or your admin user id
-    approved: true,
-    admin_note: null,
-    rejection_reason: null,
+    approved: isApproved,
+    admin_note: note,
+    rejection_reason: refuseReason,
   }
 
   const updatedRequest = await saveAdminDecision(Number(id), token, payload)
@@ -147,8 +149,64 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
          
         </div>
 
-        <div className="flex flex-col gap-3 border-t border-secondary/10 bg-slate-50 px-5 py-4 tablet:flex-row tablet:items-center tablet:justify-between tablet:px-8">
-          
+        <div className="flex flex-col gap-3 border-t border-secondary/10 bg-slate-50 px-5 py-4 tablet:items-center tablet:justify-between tablet:px-8">
+         <div className="flex flex-col gap-3">
+  <p className="text-sm font-bold text-slate-700">
+    Décision administrative
+  </p>
+
+  <div className="grid gap-3 tablet:grid-cols-2">
+    <label
+      className={`flex cursor-pointer items-start gap-3 rounded-lg border px-4 py-3 text-sm shadow-sm transition ${
+        isApproved === true
+          ? "border-green-500 bg-green-50 text-green-900"
+          : "border-secondary/15 bg-white text-slate-700 hover:border-green-400 hover:bg-green-50"
+      }`}
+    >
+      <input
+        type="radio"
+        name="adminDecision"
+        value="approved"
+        checked={isApproved === true}
+        onChange={() => setIsApproved(true)}
+        className="mt-1 h-4 w-4 accent-green-700"
+        required
+      />
+
+      <span className="flex flex-col gap-1">
+        <span className="font-black">Autoriser l'achat</span>
+        <span className="text-xs leading-5 text-slate-500">
+          L'acheteur pourra procéder à l'achat.
+        </span>
+      </span>
+    </label>
+
+    <label
+      className={`flex cursor-pointer items-start gap-3 rounded-lg border px-4 py-3 text-sm shadow-sm transition ${
+        isApproved === false
+          ? "border-red-500 bg-red-50 text-red-900"
+          : "border-secondary/15 bg-white text-slate-700 hover:border-red-400 hover:bg-red-50"
+      }`}
+    >
+      <input
+        type="radio"
+        name="adminDecision"
+        value="rejected"
+        checked={isApproved === false}
+        onChange={() => setIsApproved(false)}
+        className="mt-1 h-4 w-4 accent-red-700"
+        required
+      />
+
+      <span className="flex flex-col gap-1">
+        <span className="font-black">Refuser l'achat</span>
+        <span className="text-xs leading-5 text-slate-500">
+          La demande sera refusée et aucun achat ne devra être fait.
+        </span>
+      </span>
+    </label>
+  </div>
+</div>
 
           <button
             type="submit"
