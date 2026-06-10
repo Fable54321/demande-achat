@@ -6,7 +6,8 @@ import {
   ShoppingBag,
   User,
 } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { useParams } from "react-router-dom"
 
 const hardcodedRequest = {
   requestedBy: "Jean Tremblay",
@@ -25,6 +26,10 @@ const formatCurrency = (value: number) =>
 const PriceConfirmation = () => {
   const [hasConfirmed, setHasConfirmed] = useState(false)
   const [submitSuccess, setSubmitSuccess] = useState(false)
+
+  const { id } = useParams();
+
+useEffect(() => {console.log(id)},[id])
 
   const totalPrice = hardcodedRequest.quantity * hardcodedRequest.unitPrice
 
