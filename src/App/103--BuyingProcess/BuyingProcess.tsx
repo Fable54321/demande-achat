@@ -262,7 +262,7 @@ const BuyingProcess = () => {
                   <div className="rounded-lg border border-secondary/15 bg-white px-3 py-2 shadow-sm">
                     <dt className="flex items-center gap-2 font-bold text-secondary">
                       <Hash size={16} aria-hidden="true" />
-                      Quantite
+                      Quantité
                     </dt>
                     <dd className="mt-1 text-slate-700">
                       {selectedPurchaseRequest.quantity}
