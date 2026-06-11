@@ -1,6 +1,7 @@
 import {
   CheckCircle2,
   DollarSign,
+  Mail,
   PackageCheck,
   Send,
   ShoppingBag,
@@ -262,14 +263,16 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
           </p>
 
 <div className="flex flex-col gap-1">
-  { email && <button
-            type="button"
-            className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-secondary px-6 text-sm font-black text-white shadow-lg shadow-secondary/20 transition hover:cursor-pointer hover:bg-[#3f610f] focus:outline-none focus:ring-4 focus:ring-primary/30"
-          onClick={() => setIsOverlayOpen(true)}
-          >
-            <Send size={18} aria-hidden="true" />
-            Communiquer avec le demandeur
-          </button>}
+{email && (
+    <button
+      type="button"
+      className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-[#C9A227] px-6 font-black text-white shadow-lg shadow-[#C9A227]/25 transition hover:cursor-pointer hover:bg-[#B89120] focus:outline-none focus:ring-4 focus:ring-[#C9A227]/30"
+      onClick={() => setIsOverlayOpen(true)}
+    >
+      <Mail size={18} aria-hidden="true" />
+      Communiquer avec le demandeur
+    </button>
+  )}
 
           <button
             type="submit"
