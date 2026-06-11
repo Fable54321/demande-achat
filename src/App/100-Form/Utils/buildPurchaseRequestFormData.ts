@@ -19,6 +19,7 @@ export const buildPurchaseRequestFormData = ({
   name,
   price,
   quantity,
+  email,
 }: PurchaseRequestFormDataInput) => {
   const formData = new FormData()
 
@@ -37,6 +38,10 @@ export const buildPurchaseRequestFormData = ({
 
   if (expectedDate) {
     formData.append("expected_date", expectedDate)
+  }
+
+  if (email) {
+    formData.append("email", email)
   }
 
   images.forEach((image) => {

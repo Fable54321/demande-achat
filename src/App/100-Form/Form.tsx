@@ -126,6 +126,9 @@ const Form = () => {
   loadFormToken()
 }, [getPurchaseRequestFormToken])
 
+
+
+
   const minExpectedDate = getDateFromToday(0)
   const minExpectedDateObject = parseDateInputValue(minExpectedDate)
   const selectedDateLabel = formatSelectedDate(expectedDate)
@@ -307,6 +310,8 @@ const createdRequest = await createPurchaseRequest(formData, formToken)
   setName("")
   setDescription("")
   setJustification("")
+  setSelectedEmployee(null)
+  setEmail("")
   setPrice("")
   setLink("")
   setExpectedDate("")
