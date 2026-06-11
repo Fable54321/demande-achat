@@ -125,7 +125,7 @@ const BuyingProcess = () => {
                 </h2>
               </div>
             </div>
-            <p className="max-w-sm text-sm leading-6 text-slate-600">
+            <p className="max-w-sm text-base leading-7 text-slate-600">
               Confirmez les informations finales après avoir trouvé et acheté le produit.
             </p>
           </div>
@@ -133,14 +133,14 @@ const BuyingProcess = () => {
 
         <div className="flex flex-col gap-5 px-5 py-6 tablet:px-8">
           {submitError && (
-            <div className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+            <div className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-base text-red-800">
               <AlertCircle className="mt-0.5 shrink-0" size={18} />
               <span>{submitError}</span>
             </div>
           )}
 
           {submitSuccess && (
-            <div className="flex items-start gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+            <div className="flex items-start gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-base text-green-800">
               <CheckCircle2 className="mt-0.5 shrink-0" size={18} />
               <span>L'achat a ete confirme avec succes.</span>
             </div>
@@ -154,18 +154,18 @@ const BuyingProcess = () => {
                     <PackageCheck size={22} aria-hidden="true" />
                   </span>
                   <div className="flex min-w-0 flex-col gap-2">
-                    <p className="text-[1.1em] font-bold text-black">
+                    <p className="text-lg font-bold text-black">
                       Demande achetée
                     </p>
                     {selectedPurchaseRequest.description && (
-                      <p className="ml-2 mt-1 leading-6 text-slate-900">
+                      <p className="ml-2 mt-1 text-base leading-7 text-slate-900">
                         <span className="font-bold">Produit:</span>
                         <br />
                         {selectedPurchaseRequest.description}
                       </p>
                     )}
                     {selectedPurchaseRequest.reason && (
-                      <p className="ml-2 mt-1 leading-6 text-slate-900">
+                      <p className="ml-2 mt-1 text-base leading-7 text-slate-900">
                         <span className="font-bold">Justification:</span>
                         <br />
                         {selectedPurchaseRequest.reason}
@@ -174,7 +174,7 @@ const BuyingProcess = () => {
                   </div>
                 </div>
 
-                <dl className="mt-5 grid gap-3 text-sm tablet:grid-cols-4">
+                <dl className="mt-5 grid gap-3 text-base tablet:grid-cols-4">
                   <div className="rounded-lg border border-secondary/15 bg-white px-3 py-2 shadow-sm">
                     <dt className="flex items-center gap-2 font-bold text-secondary">
                       <User size={16} aria-hidden="true" />
@@ -216,7 +216,7 @@ const BuyingProcess = () => {
               </div>
 
               <div className="grid gap-4 tablet:grid-cols-2">
-                <label className="flex flex-col gap-2 text-sm font-bold text-slate-700">
+                <label className="flex flex-col gap-2 text-base font-bold text-slate-700">
                   Prix unitaire final
                   <input
                     type="number"
@@ -234,12 +234,12 @@ const BuyingProcess = () => {
                         ? String(suggestedFinalUnitPrice)
                         : "Ex: 25.00"
                     }
-                    className="h-12 rounded-lg border border-secondary/20 bg-white px-3 text-sm font-semibold text-slate-800 shadow-sm outline-none transition focus:border-secondary focus:ring-4 focus:ring-primary/20"
+                    className="h-13 min-h-13 rounded-lg border border-secondary/20 bg-white px-3 text-base font-semibold text-slate-800 shadow-sm outline-none transition focus:border-secondary focus:ring-4 focus:ring-primary/20"
                     required
                   />
                 </label>
 
-                <label className="flex flex-col gap-2 text-sm font-bold text-slate-700">
+                <label className="flex flex-col gap-2 text-base font-bold text-slate-700">
                   Réference d'achat
                   <input
                     type="text"
@@ -257,16 +257,16 @@ const BuyingProcess = () => {
                       selectedPurchaseRequest.purchase_reference ||
                       "Numéro de facture, commande ou reçu"
                     }
-                    className="h-12 rounded-lg border border-secondary/20 bg-white px-3 text-sm font-semibold text-slate-800 shadow-sm outline-none transition focus:border-secondary focus:ring-4 focus:ring-primary/20"
+                    className="h-13 min-h-13 rounded-lg border border-secondary/20 bg-white px-3 text-base font-semibold text-slate-800 shadow-sm outline-none transition focus:border-secondary focus:ring-4 focus:ring-primary/20"
                   />
                 </label>
 
-                <div className="rounded-lg border border-secondary/15 bg-tertiary/70 px-4 py-3 text-sm leading-6 text-slate-700 tablet:col-span-2">
+                <div className="rounded-lg border border-secondary/15 bg-tertiary/70 px-4 py-3 text-base leading-7 text-slate-700 tablet:col-span-2">
                   <span className="font-bold text-secondary">Total final: </span>
                   {finalTotal !== null ? formatCurrency(finalTotal) : "A calculer"}
                 </div>
 
-                <label className="flex flex-col gap-2 text-sm font-bold text-slate-700 tablet:col-span-2">
+                <label className="flex flex-col gap-2 text-base font-bold text-slate-700 tablet:col-span-2">
                   Note d'achat
                   <textarea
                     value={purchaseNote}
@@ -281,7 +281,7 @@ const BuyingProcess = () => {
                       selectedPurchaseRequest.purchase_note ||
                       "Détails utiles: fournisseur final, livraison, garantie, emplacement, suivi, etc."
                     }
-                    className="min-h-28 resize-y rounded-lg border border-secondary/20 bg-white px-3 py-3 text-sm font-semibold leading-6 text-slate-800 shadow-sm outline-none transition placeholder:font-medium placeholder:text-slate-400 focus:border-secondary focus:ring-4 focus:ring-primary/20"
+                    className="min-h-32 resize-y rounded-lg border border-secondary/20 bg-white px-3 py-3 text-base font-semibold leading-7 text-slate-800 shadow-sm outline-none transition placeholder:font-medium placeholder:text-slate-400 focus:border-secondary focus:ring-4 focus:ring-primary/20"
                   />
                 </label>
               </div>
@@ -291,10 +291,10 @@ const BuyingProcess = () => {
 
         <div className="flex flex-col gap-4 border-t border-secondary/10 bg-slate-50 px-5 py-4 tablet:flex-row tablet:items-center tablet:justify-between tablet:px-8">
           <div className="max-w-md">
-            <p className="text-sm font-bold text-slate-700">
+            <p className="text-base font-bold text-slate-700">
               Finaliser l'achat
             </p>
-            <p className="mt-1 text-sm leading-6 text-slate-500">
+            <p className="mt-1 text-base leading-7 text-slate-500">
               Une fois confirmé, la demande sera marquée comme achetée avec les informations finales.
             </p>
           </div>
