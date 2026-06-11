@@ -18,124 +18,37 @@ import { usePurchaseRequests, type Employee } from "../../Contexts/PurchaseReque
 import { getUrgencyFromExpectedDate } from "./getUrgencyFromExpectedDate"
 import { getMonthStart} from "./Utils/getMonthStartandDays"
 import DatePicker from "./DatePicker"
-
-const dateFormatter = new Intl.DateTimeFormat("fr-CA", {
-  weekday: "long",
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-})
-
-const monthFormatter = new Intl.DateTimeFormat("fr-CA", {
-  month: "long",
-  year: "numeric",
-})
-
-
-
-const fieldControlClass =
-  "w-full rounded-lg border border-secondary/25 bg-white px-3.5 py-3 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-secondary focus:ring-4 focus:ring-primary/25"
-
-const MAX_NAME_LENGTH = 80
-const MAX_DESCRIPTION_LENGTH = 1000
-const MAX_JUSTIFICATION_LENGTH = 1000
-const MAX_LINK_LENGTH = 2048
-const MAX_QUANTITY = 9999
-const MAX_PRICE = 999999.99
-
-const MAX_IMAGES = 5
-const MAX_IMAGE_SIZE_MB = 7
-const MAX_IMAGE_SIZE_BYTES = MAX_IMAGE_SIZE_MB * 1024 * 1024
-const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"]
-
-const toDateInputValue = (date: Date) => {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, "0")
-  const day = String(date.getDate()).padStart(2, "0")
-
-  return `${year}-${month}-${day}`
-}
-
-const getDateFromToday = (daysToAdd: number) => {
-  const date = new Date()
-  date.setHours(0, 0, 0, 0)
-  date.setDate(date.getDate() + daysToAdd)
-
-  return toDateInputValue(date)
-}
-
-const formatSelectedDate = (dateValue: string) => {
-  if (!dateValue) return ""
-
-  return dateFormatter.format(new Date(`${dateValue}T00:00:00`))
-}
-
-const parseDateInputValue = (dateValue: string) => {
-  const [year, month, day] = dateValue.split("-").map(Number)
-
-  return new Date(year, month - 1, day)
-}
-
-const stripUnsafeText = (value: string, maxLength: number) =>
-  Array.from(value)
-    .filter((character) => {
-      const code = character.charCodeAt(0)
-
-      return code > 31 && code !== 127
-    })
-    .join("")
-    .replace(/[<>]/g, "")
-    .slice(0, maxLength)
-
-const sanitizeName = (value: string) =>
-  stripUnsafeText(value, MAX_NAME_LENGTH).replace(
-    /[^\p{L}\p{M} .,'-]/gu,
-    "",
-  )
-
-const sanitizeQuantity = (value: string) => {
-  const digitsOnly = value.replace(/\D/g, "").slice(0, 4)
-
-  if (!digitsOnly) return ""
-
-  return String(Math.min(Number(digitsOnly), MAX_QUANTITY))
-}
-
-const sanitizePrice = (value: string) => {
-  const normalizedValue = value.replace(",", ".").replace(/[^\d.]/g, "")
-  const [whole = "", ...decimalParts] = normalizedValue.split(".")
-  const decimal = decimalParts.join("").slice(0, 2)
-  const wholeNumber = whole.slice(0, 6)
-
-  return decimalParts.length > 0 ? `${wholeNumber}.${decimal}` : wholeNumber
-}
-
-const sanitizeUrl = (value: string) =>
-  stripUnsafeText(value.trim(), MAX_LINK_LENGTH).replace(/\s/g, "")
-
-const isValidIsoDate = (value: string) => {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
-
-  const parsedDate = parseDateInputValue(value)
-
-  return toDateInputValue(parsedDate) === value
-}
-
-const isValidHttpUrl = (value: string) => {
-  if (!value) return true
-
-  try {
-    const url = new URL(value)
-
-    return url.protocol === "http:" || url.protocol === "https:"
-  } catch {
-    return false
-  }
-}
-
-
-
-
+import { buildPurchaseRequestFormData } from "./Utils/buildPurchaseRequestFormData"
+import {
+  formatSelectedDate,
+  getDateFromToday,
+  isValidIsoDate,
+  monthFormatter,
+  parseDateInputValue,
+  toDateInputValue,
+} from "./Utils/dateHelpers"
+import {
+  ACCEPTED_IMAGE_TYPES,
+  fieldControlClass,
+  MAX_DESCRIPTION_LENGTH,
+  MAX_IMAGES,
+  MAX_IMAGE_SIZE_BYTES,
+  MAX_IMAGE_SIZE_MB,
+  MAX_JUSTIFICATION_LENGTH,
+  MAX_LINK_LENGTH,
+  MAX_NAME_LENGTH,
+  MAX_PRICE,
+  MAX_QUANTITY,
+} from "./Utils/formConstants"
+import {
+  isValidHttpUrl,
+  isValidPrice,
+  sanitizeName,
+  sanitizePrice,
+  sanitizeQuantity,
+  sanitizeUrl,
+  stripUnsafeText,
+} from "./Utils/sanitizers"
 
 type FieldProps = {
   children: ReactNode
@@ -181,6 +94,7 @@ const Form = () => {
   const [formToken, setFormToken] = useState<string | null>(null)
 
   const [name, setName] = useState("")
+  const [email, setEmail] = useState("")
   const [description, setDescription] = useState("")
   const [justification, setJustification] = useState("")
   const [price, setPrice] = useState("")
@@ -305,12 +219,12 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
   setSubmitSuccess(false)
 
   if (companyWebsite.trim()) {
-    setSubmitError("La demande n'a pas pu etre envoyee.")
+    setSubmitError("La demande n'a pas pu etre envoyée.")
     return
   }
 
   if (!formToken) {
-    setSubmitError("Problème lors de la créeation de la demande.")
+    setSubmitError("Problème lors de la création de la demande.")
     console.error(error)
     return
   }
@@ -328,6 +242,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
   const safePrice = price ? Number(sanitizePrice(price)) : null
   const safeLink = sanitizeUrl(link)
   const safeExpectedDate = expectedDate.trim()
+  const safeEmail = email ? email.trim() : null
 
   if (!safeName) {
     setSubmitError("Le nom du demandeur est requis.")
@@ -344,15 +259,15 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     safeQuantity < 1 ||
     safeQuantity > MAX_QUANTITY
   ) {
-    setSubmitError(`La quantite doit etre entre 1 et ${MAX_QUANTITY}.`)
+    setSubmitError(`La quantité doit être entre 1 et ${MAX_QUANTITY}.`)
     return
   }
 
   if (
     safePrice !== null &&
-    (!Number.isFinite(safePrice) || safePrice < 0 || safePrice > MAX_PRICE)
+    !isValidPrice(safePrice)
   ) {
-    setSubmitError("Le prix doit etre un montant valide.")
+    setSubmitError("Le prix doit être un montant valide.")
     return
   }
 
@@ -370,27 +285,16 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     return
   }
 
-const formData = new FormData()
-
-formData.append("requested_by", safeName)
-formData.append("description", safeDescription)
-formData.append("quantity", String(safeQuantity))
-formData.append("reason", safeJustification || "")
-
-if (safePrice !== null) {
-  formData.append("requested_unit_price", String(safePrice))
-}
-
-if (safeLink) {
-  formData.append("product_link", safeLink)
-}
-
-if (safeExpectedDate) {
-  formData.append("expected_date", safeExpectedDate)
-}
-
-images.forEach((image) => {
-  formData.append("pictures", image, image.name)
+const formData = buildPurchaseRequestFormData({
+  description: safeDescription,
+  expectedDate: safeExpectedDate,
+  images,
+  justification: safeJustification,
+  link: safeLink,
+  name: safeName,
+  price: safePrice,
+  quantity: safeQuantity,
+  email: safeEmail,
 })
 
 const createdRequest = await createPurchaseRequest(formData, formToken)
@@ -482,6 +386,7 @@ const createdRequest = await createPurchaseRequest(formData, formToken)
         })
 
         setSelectedEmployee(matchingEmployee ?? null)
+        setEmail(matchingEmployee?.email ?? "")
       }}
       required
     />

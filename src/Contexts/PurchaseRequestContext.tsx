@@ -84,6 +84,7 @@ export interface CreatePurchaseRequestPayload {
   requested_supplier?: string | null
   product_link?: string | null
   expected_date?: string | null
+  email?: string | null
 }
 
 export interface BuyerValidationPayload {
