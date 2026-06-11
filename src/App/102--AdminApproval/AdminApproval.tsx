@@ -68,7 +68,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 }
 
   return (
-    <section className="w-full px-4 pb-10 pt-6 tablet:px-8">
+    <section className="w-full px-4 pb-10 pt-6 tablet:px-8 ">
       <form
         onSubmit={handleSubmit}
         className="mx-auto flex w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-secondary/15 bg-white shadow-2xl shadow-secondary/10"
@@ -126,7 +126,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
               </div>
             </div>
 
-            <dl className="mt-5 flex flex-col gap-3 text-sm ">
+            <dl className="mt-5 flex flex-col gap-3  ">
              <div className="flex gap-3 w-full">  
               <div className="rounded-lg border border-secondary/15 bg-white px-3 py-2 shadow-sm flex-1">
                 <dt className="flex items-center gap-2 font-bold text-secondary">
@@ -170,13 +170,13 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 
         <div className="flex flex-col gap-3 border-t border-secondary/10 bg-slate-50 px-5 py-4 tablet:items-center tablet:justify-between tablet:px-8">
          <div className="flex flex-col gap-3">
-  <p className="text-sm font-bold text-slate-700">
+  <p className=" font-bold text-slate-700">
     Décision administrative
   </p>
 
   <div className="grid gap-3 tablet:grid-cols-2">
     <label
-      className={`flex cursor-pointer items-start gap-3 rounded-lg border px-4 py-3 text-sm shadow-sm transition ${
+      className={`flex cursor-pointer items-start gap-3 rounded-lg border px-4 py-3 shadow-sm transition ${
         isApproved === true
           ? "border-green-500 bg-green-50 text-green-900"
           : "border-secondary/15 bg-white text-slate-700 hover:border-green-400 hover:bg-green-50"
@@ -204,7 +204,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     </label>
 
     <label
-      className={`flex cursor-pointer items-start gap-3 rounded-lg border px-4 py-3 text-sm shadow-sm transition ${
+      className={`flex cursor-pointer items-start gap-3 rounded-lg border px-4 py-3 shadow-sm transition ${
         isApproved === false
           ? "border-red-500 bg-red-50 text-red-900"
           : "border-secondary/15 bg-white text-slate-700 hover:border-red-400 hover:bg-red-50"
@@ -233,7 +233,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
   </div>
 
   {isApproved === false && (
-    <label className="flex flex-col gap-2 text-sm font-bold text-slate-700">
+    <label className="flex flex-col gap-2  font-bold text-slate-700">
       Raison du refus
       <textarea
         value={refuseReason}
@@ -244,7 +244,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         rows={4}
         required
         placeholder="Expliquez pourquoi la demande est refusée."
-        className="min-h-28 resize-y rounded-lg border border-secondary/20 bg-white px-3 py-3 text-sm font-semibold leading-6 text-slate-800 shadow-sm outline-none transition placeholder:font-medium placeholder:text-slate-400 focus:border-secondary focus:ring-4 focus:ring-primary/20"
+        className="min-h-28 resize-y rounded-lg border border-secondary/20 bg-white px-3 py-3 font-semibold leading-6 text-slate-800 shadow-sm outline-none transition placeholder:font-medium placeholder:text-slate-400 focus:border-secondary focus:ring-4 focus:ring-primary/20"
       />
     </label>
   )}
@@ -254,7 +254,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
             {email && (
               <button
                 type="button"
-                className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-secondary px-6 text-sm font-black text-white shadow-lg shadow-secondary/20 transition hover:cursor-pointer hover:bg-[#3f610f] focus:outline-none focus:ring-4 focus:ring-primary/30"
+                className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-secondary px-6 font-black text-white shadow-lg shadow-secondary/20 transition hover:cursor-pointer hover:bg-[#3f610f] focus:outline-none focus:ring-4 focus:ring-primary/30"
                 onClick={() => setIsOverlayOpen(true)}
               >
                 <Send size={18} aria-hidden="true" />
@@ -264,7 +264,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 
             <button
               type="submit"
-              className="inline-flex h-12 mx-auto items-center justify-center gap-2 rounded-lg bg-secondary px-6 text-sm font-black text-white shadow-lg shadow-secondary/20 transition hover:cursor-pointer hover:bg-[#3f610f] focus:outline-none focus:ring-4 focus:ring-primary/30"
+              className="inline-flex h-12 mx-auto items-center justify-center gap-2 rounded-lg bg-secondary px-6 font-black text-white shadow-lg shadow-secondary/20 transition hover:cursor-pointer hover:bg-[#3f610f] focus:outline-none focus:ring-4 focus:ring-primary/30"
             >
               <Send size={18} aria-hidden="true" />
               Confirmer la décision
