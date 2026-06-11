@@ -10,6 +10,7 @@ import {
 import { useParams } from "react-router-dom"
 import { usePurchaseRequests } from "../../Contexts/PurchaseRequestContext"
 import { useEffect, useState } from "react"
+import SendEmailOverlay from "../SendEmailOverlay"
 
 
 
@@ -21,6 +22,7 @@ const formatCurrency = (value: number) =>
 
 const AdminApproval = () => {
   const [submitSuccess, setSubmitSuccess] = useState(false)
+  const [isOverlayOpen, setIsOverlayOpen] = useState(false)
 
   const { id, token } = useParams<{
   id: string
@@ -31,10 +33,11 @@ const AdminApproval = () => {
   const [isApproved, setIsApproved] = useState<boolean>(false);
   const note = "";
   const refuseReason = "";
+  const email = selectedPurchaseRequest?.request_email ?? null
 
 useEffect(() => {
     fetchPurchaseRequestById(Number(id));
-},[selectedPurchaseRequest]);
+},[id]);
   
 
 const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -208,15 +211,35 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
   </div>
 </div>
 
-          <button
-            type="submit"
-            className="inline-flex h-12 mx-auto items-center justify-center gap-2 rounded-lg bg-secondary px-6 text-sm font-black text-white shadow-lg shadow-secondary/20 transition hover:cursor-pointer hover:bg-[#3f610f] focus:outline-none focus:ring-4 focus:ring-primary/30"
-          >
-            <Send size={18} aria-hidden="true" />
-            Confirmer la décision
-          </button>
+          <div className="flex flex-col gap-1">
+            {email && (
+              <button
+                type="button"
+                className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-secondary px-6 text-sm font-black text-white shadow-lg shadow-secondary/20 transition hover:cursor-pointer hover:bg-[#3f610f] focus:outline-none focus:ring-4 focus:ring-primary/30"
+                onClick={() => setIsOverlayOpen(true)}
+              >
+                <Send size={18} aria-hidden="true" />
+                Communiquer avec le demandeur
+              </button>
+            )}
+
+            <button
+              type="submit"
+              className="inline-flex h-12 mx-auto items-center justify-center gap-2 rounded-lg bg-secondary px-6 text-sm font-black text-white shadow-lg shadow-secondary/20 transition hover:cursor-pointer hover:bg-[#3f610f] focus:outline-none focus:ring-4 focus:ring-primary/30"
+            >
+              <Send size={18} aria-hidden="true" />
+              Confirmer la décision
+            </button>
+          </div>
         </div>
       </form>
+      {isOverlayOpen && email && (
+        <SendEmailOverlay
+          isOpen={isOverlayOpen}
+          onClose={() => setIsOverlayOpen(false)}
+          emailSendTo={email}
+        />
+      )}
     </section>
   )
 }

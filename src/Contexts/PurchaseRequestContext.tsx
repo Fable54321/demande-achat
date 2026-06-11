@@ -44,6 +44,8 @@ reason: string | null
   final_unit_price: number | null
   final_total_price: number | null
 
+  request_email: string | null
+
   requested_supplier: string | null
   buyer_confirmed_supplier: string | null
   product_link: string | null
@@ -133,7 +135,7 @@ interface PurchaseRequestsContextType {
 
   fetchPurchaseRequests: (status?: PurchaseRequestStatus) => Promise<void>
   fetchPurchaseRequestById: (id: number) => Promise<PurchaseRequest | null>
-getPurchaseRequestFormToken: () => Promise<string | null>
+getPurchaseRequestFormToken: () => Promise<PurchaseRequestFormTokenResponse | null>
 createPurchaseRequest: (
   formData: FormData,
   formToken: string
@@ -298,7 +300,7 @@ useEffect(() => {
       "/purchase-request/form-token"
     )
 
-    return data.token
+    return data
   } catch (error) {
     const message =
       error instanceof Error

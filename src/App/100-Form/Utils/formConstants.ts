@@ -1,5 +1,5 @@
 export const fieldControlClass =
-  "w-full rounded-lg border border-secondary/25 bg-white px-3.5 py-3 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-secondary focus:ring-4 focus:ring-primary/25"
+  "w-full rounded-lg border border-secondary/25 bg-white px-3.5 py-3 text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-secondary focus:ring-4 focus:ring-primary/25"
 
 export const MAX_NAME_LENGTH = 80
 export const MAX_DESCRIPTION_LENGTH = 1000

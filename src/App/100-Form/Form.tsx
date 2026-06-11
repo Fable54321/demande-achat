@@ -13,7 +13,7 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react"
-import { useEffect, useMemo, useState, type ReactNode } from "react"
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react"
 import { usePurchaseRequests, type Employee } from "../../Contexts/PurchaseRequestContext"
 import { getUrgencyFromExpectedDate } from "./getUrgencyFromExpectedDate"
 import { getMonthStart} from "./Utils/getMonthStartandDays"
@@ -92,6 +92,9 @@ const Form = () => {
   usePurchaseRequests()
 
   const [formToken, setFormToken] = useState<string | null>(null)
+  const [formTokenExpiresAt, setFormTokenExpiresAt] = useState<string | null>(null)
+  const [isFormTokenExpired, setIsFormTokenExpired] = useState(false)
+  const [isRefreshingFormToken, setIsRefreshingFormToken] = useState(false)
 
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
@@ -117,14 +120,37 @@ const Form = () => {
     [employees],
   )
 
-  useEffect(() => {
-  const loadFormToken = async () => {
-    const token = await getPurchaseRequestFormToken()
-    setFormToken(token)
-  }
+  const refreshFormToken = useCallback(async () => {
+    try {
+      setIsRefreshingFormToken(true)
+      setSubmitError(null)
 
-  loadFormToken()
-}, [getPurchaseRequestFormToken])
+      const tokenData = await getPurchaseRequestFormToken()
+
+      setFormToken(tokenData?.token ?? null)
+      setFormTokenExpiresAt(tokenData?.expires_at ?? null)
+      setIsFormTokenExpired(false)
+    } finally {
+      setIsRefreshingFormToken(false)
+    }
+  }, [getPurchaseRequestFormToken])
+
+  useEffect(() => {
+    refreshFormToken()
+  }, [refreshFormToken])
+
+  useEffect(() => {
+    if (!formTokenExpiresAt) return
+
+    const expiresAt = new Date(formTokenExpiresAt).getTime()
+    const timeUntilExpiry = expiresAt - Date.now()
+
+    const timeoutId = window.setTimeout(() => {
+      setIsFormTokenExpired(true)
+    }, Math.max(0, timeUntilExpiry))
+
+    return () => window.clearTimeout(timeoutId)
+  }, [formTokenExpiresAt])
 
 
 
@@ -226,8 +252,8 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     return
   }
 
-  if (!formToken) {
-    setSubmitError("Problème lors de la création de la demande.")
+  if (!formToken || isFormTokenExpired) {
+    setSubmitError("Le formulaire a expire. Rafraichissez-le avant de soumettre la demande.")
     console.error(error)
     return
   }
@@ -305,7 +331,9 @@ const createdRequest = await createPurchaseRequest(formData, formToken)
   if (!createdRequest) return
 
   const newToken = await getPurchaseRequestFormToken()
-  setFormToken(newToken)
+  setFormToken(newToken?.token ?? null)
+  setFormTokenExpiresAt(newToken?.expires_at ?? null)
+  setIsFormTokenExpired(false)
 
   setName("")
   setDescription("")
@@ -360,9 +388,29 @@ const createdRequest = await createPurchaseRequest(formData, formToken)
           )}
 
           {submitSuccess && (
-            <div className="flex items-start gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+            <div className="flex items-start gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-green-800">
               <CheckCircle2 className="mt-0.5 shrink-0" size={18} />
               <span>La demande d'achat a été créée avec succès.</span>
+            </div>
+          )}
+
+          {isFormTokenExpired && (
+            <div className="flex flex-col gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 tablet:flex-row tablet:items-center tablet:justify-between">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="mt-0.5 shrink-0" size={18} />
+                <span>
+                  Ce formulaire a expire. Rafraichissez-le avant de soumettre la demande.
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={refreshFormToken}
+                disabled={isRefreshingFormToken}
+                className="inline-flex h-10 shrink-0 items-center justify-center rounded-lg border border-amber-300 bg-white px-4 text-sm font-black text-amber-900 shadow-sm transition hover:bg-amber-100 focus:outline-none focus:ring-4 focus:ring-amber-200 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isRefreshingFormToken ? "Rafraichissement..." : "Rafraichir le formulaire"}
+              </button>
             </div>
           )}
 
@@ -448,7 +496,7 @@ const createdRequest = await createPurchaseRequest(formData, formToken)
             label="Description du produit demandé"
           >
             <textarea
-              className={`${fieldControlClass} min-h-28 resize-y leading-6`}
+              className={`${fieldControlClass} min-h-28 resize-y leading-6 text-`}
               name="description"
               id="description"
               placeholder="Décrire de façon claire le produit qui devra être acheté."
@@ -471,7 +519,7 @@ const createdRequest = await createPurchaseRequest(formData, formToken)
             optional
           >
             <textarea
-              className={`${fieldControlClass} min-h-28 resize-y leading-6`}
+              className={`${fieldControlClass} min-h-28 resize-y leading-6 text-[1.1rem]`}
               name="justification"
               id="justification"
               rows={3}
@@ -699,7 +747,7 @@ const createdRequest = await createPurchaseRequest(formData, formToken)
           
           <button
             type="submit"
-            disabled={loading || !formToken}
+            disabled={loading || !formToken || isFormTokenExpired || isRefreshingFormToken}
             className="inline-flex h-12 items-center justify-center gap-2 rounded-lg
              bg-secondary px-6 text-sm font-black text-white shadow-lg shadow-secondary/20 transition 
              hover:bg-[#3f610f] 
@@ -713,7 +761,7 @@ const createdRequest = await createPurchaseRequest(formData, formToken)
           </button>
         </div>
       </form>
-      {submitSuccess && <p className="mt-4 text-green-600">La demande a bien été envoyée.</p>}
+      {submitSuccess && <p className="mt-4 text-green-600 text-[1.2em]">La demande a bien été envoyée.</p>}
     </section>
   )
 }

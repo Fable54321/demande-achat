@@ -3,7 +3,7 @@ import { Outlet } from "react-router-dom"
 
 const App = () => {
   return (
-    <article className="min-h-screen w-full bg-tertiary font-tertiary">
+    <article className="min-h-screen w-full bg-tertiary font-tertiary md:text-[1.1rem]">
       <div className="mx-auto flex w-full max-w-6xl flex-col items-center">
         <header className="px-4 pt-8 tablet:px-8">
           <h1 className="text-balance text-center text-3xl font-black text-secondary tablet:text-5xl">

@@ -6,9 +6,10 @@ import {
   ShoppingBag,
   User,
 } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useParams } from "react-router-dom"
 import { usePurchaseRequests } from "../../Contexts/PurchaseRequestContext"
+import SendEmailOverlay from "../SendEmailOverlay"
 
 
 
@@ -26,16 +27,32 @@ const PriceConfirmation = () => {
 const [confirmedSupplier, setConfirmedSupplier] = useState("")
 const [buyerNote, setBuyerNote] = useState("")
 
+
+const [isOverlayOpen, setIsOverlayOpen] = useState(false);
+
   const { purchaseRequestId: id, token } = useParams<{
   purchaseRequestId: string
   token: string
 }>()
 
-  const { fetchPurchaseRequestById, selectedPurchaseRequest, validateBuyerPrice } = usePurchaseRequests();
+  const { fetchPurchaseRequestById, selectedPurchaseRequest, validateBuyerPrice, loading } = usePurchaseRequests();
 
+// eslint-disable-next-line react-hooks/exhaustive-deps
 useEffect(() => {fetchPurchaseRequestById(Number(id));}, [id]);
 
 useEffect(()=> {console.log(selectedPurchaseRequest)}, [selectedPurchaseRequest]);
+
+const email = useMemo(() => {
+
+  if(!selectedPurchaseRequest) {
+    return
+  }
+
+  if (selectedPurchaseRequest.request_email) {
+    return selectedPurchaseRequest.request_email
+  }
+  return null
+},[selectedPurchaseRequest]);
 
   
 
@@ -66,7 +83,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 }
 
   return (
-    <section className="w-full px-4 pb-10 pt-6 tablet:px-8">
+    <section className="w-full px-4 pb-10 pt-6 tablet:px-8 relative">
       <form
         onSubmit={handleSubmit}
         className="mx-auto flex w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-secondary/15 bg-white shadow-2xl shadow-secondary/10"
@@ -152,7 +169,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
           </div>
           
           <div className="grid gap-4 tablet:grid-cols-2">
-<div className="col-span-2 flex items-start gap-3 rounded-lg border border-secondary/15 bg-tertiary/70 px-4 py-3 text-sm leading-6 text-slate-600">
+<div className="flex items-start gap-3 rounded-lg border border-secondary/15 bg-tertiary/70 px-4 py-3 text-sm leading-6 text-slate-600 tablet:col-span-2">
   <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-secondary/10 text-secondary">
     i
   </span>
@@ -244,15 +261,37 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
             La confirmation d'achat finale sera faite plus tard.
           </p>
 
+<div className="flex flex-col gap-1">
+  { email && <button
+            type="button"
+            className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-secondary px-6 text-sm font-black text-white shadow-lg shadow-secondary/20 transition hover:cursor-pointer hover:bg-[#3f610f] focus:outline-none focus:ring-4 focus:ring-primary/30"
+          onClick={() => setIsOverlayOpen(true)}
+          >
+            <Send size={18} aria-hidden="true" />
+            Communiquer avec le demandeur
+          </button>}
+
           <button
             type="submit"
             className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-secondary px-6 text-sm font-black text-white shadow-lg shadow-secondary/20 transition hover:cursor-pointer hover:bg-[#3f610f] focus:outline-none focus:ring-4 focus:ring-primary/30"
           >
             <Send size={18} aria-hidden="true" />
-            Confirmer le prix
+            {loading ?  "Envoi en cours..." : "Confirmer le prix"}
           </button>
+        </div>  
+
+
         </div>
       </form>
+      {isOverlayOpen && email && (
+        <SendEmailOverlay
+          isOpen={isOverlayOpen}
+          onClose={() => setIsOverlayOpen(false)}
+          emailSendTo={email}
+          
+        />
+      )}
+      {submitSuccess && <p className="mt-4 text-green-600 text-[1.2em]">La demande a bien été envoyée.</p>}
     </section>
   )
 }
