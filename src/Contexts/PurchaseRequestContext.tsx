@@ -48,6 +48,7 @@ reason: string | null
 
   requested_supplier: string | null
   buyer_confirmed_supplier: string | null
+  final_supplier?: string | null
   product_link: string | null
 
   status: PurchaseRequestStatus
@@ -76,7 +77,6 @@ reason: string | null
   purchased_by_name?: string | null
   purchased_by_surname?: string | null
 
-  final_supplier?: string | null
 }
 
 export interface CreatePurchaseRequestPayload {
@@ -125,6 +125,7 @@ interface EmployeeListResponse {
 export interface MarkPurchasedPayload {
   purchased_by_user_id: number
   final_unit_price?: number | null
+  final_supplier?: string | null
   purchase_reference?: string | null
   purchase_note?: string | null
 }
@@ -430,12 +431,12 @@ const markPurchaseRequestAsPurchased = useCallback(
       setError(null)
 
       const data = await request<PurchaseRequest>(
-        `/purchase-request/${id}/mark-purchased/${encodeURIComponent(token)}`,
-        {
-          method: "PATCH",
-          body: formData,
-        },
-      )
+          `/purchase-request/${id}/mark-purchased/${encodeURIComponent(token)}`,
+          {
+            method: "PATCH",
+            body: formData,
+          },
+        )
 
       setPurchaseRequests((prev) =>
         prev.map((request) => (request.id === id ? data : request)),
