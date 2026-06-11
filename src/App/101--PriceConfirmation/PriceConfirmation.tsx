@@ -262,8 +262,10 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
             La confirmation d'achat finale sera faite plus tard.
           </p>
 
-<div className="flex flex-col gap-1">
-{email && (
+<div className="flex flex-col gap-2">
+ {email && (
+    <>
+    <p className="text-sm">Dans un cas où il manque d'information vous pouvez :</p>
     <button
       type="button"
       className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-[#C9A227] px-6 font-black text-white shadow-lg shadow-[#C9A227]/25 transition hover:cursor-pointer hover:bg-[#B89120] focus:outline-none focus:ring-4 focus:ring-[#C9A227]/30"
@@ -272,11 +274,13 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
       <Mail size={18} aria-hidden="true" />
       Communiquer avec le demandeur
     </button>
+    
+    </>
   )}
 
           <button
             type="submit"
-            className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-secondary px-6 text-sm font-black text-white shadow-lg shadow-secondary/20 transition hover:cursor-pointer hover:bg-[#3f610f] focus:outline-none focus:ring-4 focus:ring-primary/30"
+            className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-secondary px-6 font-black text-white shadow-lg shadow-secondary/20 transition hover:cursor-pointer hover:bg-[#3f610f] focus:outline-none focus:ring-4 focus:ring-primary/30"
           >
             <Send size={18} aria-hidden="true" />
             {loading ?  "Envoi en cours..." : "Confirmer le prix"}
