@@ -2,6 +2,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useState,
   type ReactNode,
 } from "react"
@@ -101,6 +102,21 @@ export interface AdminDecisionPayload {
   rejection_reason?: string | null
 }
 
+export interface Employee {
+  id: number
+  username: string
+  name: string
+  surname: string
+  email: string
+  role: string
+  is_office: boolean
+}
+
+interface EmployeeListResponse {
+  success: boolean
+  users: Employee[]
+}
+
 export interface MarkPurchasedPayload {
   purchased_by_user_id: number
   final_unit_price?: number | null
@@ -140,6 +156,7 @@ createPurchaseRequest: (
     rejection_reason?: string
   ) => Promise<PurchaseRequest | null>
   clearSelectedPurchaseRequest: () => void
+employees: Employee[] 
 }
 
 const PurchaseRequestsContext = createContext<
@@ -183,6 +200,7 @@ export const PurchaseRequestsProvider = ({
     useState<PurchaseRequest | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [employees, setEmployees] = useState<Employee[]>([])
 
   const fetchPurchaseRequests = useCallback(
     async (status?: PurchaseRequestStatus) => {
@@ -233,6 +251,43 @@ export const PurchaseRequestsProvider = ({
       setLoading(false)
     }
   }, [])
+
+
+useEffect(() => {
+  let cancelled = false
+
+  const getEmployees = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      const data = await request<EmployeeListResponse>("/portal/list")
+
+      if (!cancelled) {
+        setEmployees(data.users)
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Erreur lors du chargement des employés"
+
+      if (!cancelled) {
+        setError(message)
+      }
+    } finally {
+      if (!cancelled) {
+        setLoading(false)
+      }
+    }
+  }
+
+  getEmployees()
+
+  return () => {
+    cancelled = true
+  }
+}, [])
 
   const getPurchaseRequestFormToken = useCallback(async () => {
   try {
@@ -460,6 +515,7 @@ const createPurchaseRequest = useCallback(
   markPurchaseRequestAsPurchased,
   cancelPurchaseRequest,
   clearSelectedPurchaseRequest,
+  employees
 }}
     >
       {children}

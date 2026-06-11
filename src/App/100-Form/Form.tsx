@@ -14,7 +14,7 @@ import {
   type LucideIcon,
 } from "lucide-react"
 import { useEffect, useMemo, useState, type ReactNode } from "react"
-import { usePurchaseRequests } from "../../Contexts/PurchaseRequestContext"
+import { usePurchaseRequests, type Employee } from "../../Contexts/PurchaseRequestContext"
 import { getUrgencyFromExpectedDate } from "./getUrgencyFromExpectedDate"
 import { getMonthStart} from "./Utils/getMonthStartandDays"
 import DatePicker from "./DatePicker"
@@ -175,7 +175,7 @@ const Form = () => {
   
 
 
-  const { getPurchaseRequestFormToken, createPurchaseRequest, loading, error } =
+  const { getPurchaseRequestFormToken, createPurchaseRequest, loading, error, employees } =
   usePurchaseRequests()
 
   const [formToken, setFormToken] = useState<string | null>(null)
@@ -195,6 +195,13 @@ const Form = () => {
   const [submitSuccess, setSubmitSuccess] = useState(false)
   const [companyWebsite, setCompanyWebsite] = useState("")
   const [images, setImages] = useState<File[]>([])
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
+
+
+  const officeWorkers = useMemo(
+    () => employees.filter((employee) => employee.is_office),
+    [employees],
+  )
 
   useEffect(() => {
   const loadFormToken = async () => {
@@ -451,20 +458,52 @@ const createdRequest = await createPurchaseRequest(formData, formToken)
           )}
 
           <div className="grid gap-5 tablet:grid-cols-2">
-            <Field icon={User} label="Nom du demandeur">
-              <input
-                className={fieldControlClass}
-                type="text"
-                id="name"
-                name="name"
-                placeholder="Nom du demandeur"
-                autoComplete="name"
-                maxLength={MAX_NAME_LENGTH}
-                value={name}
-                onChange={(e) => setName(sanitizeName(e.target.value))}
-                required
-              />
-            </Field>
+
+         <div className="relative">
+  <Field icon={User} label="Nom du demandeur">
+    <input
+      className={fieldControlClass}
+      type="text"
+      id="name"
+      name="name"
+      list="office-workers-list"
+      placeholder="Nom du demandeur"
+      autoComplete="off"
+      maxLength={MAX_NAME_LENGTH}
+      value={name}
+      onChange={(e) => {
+        const sanitizedName = sanitizeName(e.target.value)
+
+        setName(sanitizedName)
+
+        const matchingEmployee = officeWorkers.find((employee) => {
+          const fullName = `${employee.surname} ${employee.name}`.trim()
+          return fullName === sanitizedName
+        })
+
+        setSelectedEmployee(matchingEmployee ?? null)
+      }}
+      required
+    />
+
+    <datalist id="office-workers-list">
+      {officeWorkers.map((employee) => {
+        const fullName = `${employee.surname} ${employee.name}`.trim()
+
+        return <option key={employee.id} value={fullName} />
+      })}
+    </datalist>
+  </Field>
+
+  {selectedEmployee?.email && (
+    <p className="mt-2 rounded-xl border border-secondary/10 bg-slate-50 px-4 py-2 text-sm text-secondary/80">
+      Courriel :{" "}
+      <span className="font-medium text-secondary">
+        {selectedEmployee.email}
+      </span>
+    </p>
+  )}
+</div>
 
             <Field icon={Hash} label="Quantité">
               <input

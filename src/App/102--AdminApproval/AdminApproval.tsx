@@ -29,8 +29,8 @@ const AdminApproval = () => {
 
   const { selectedPurchaseRequest, saveAdminDecision, fetchPurchaseRequestById } = usePurchaseRequests();
   const [isApproved, setIsApproved] = useState<boolean>(false);
-  const [note, setNote] = useState("");
-  const [refuseReason, setRefuseReason] = useState("");
+  const note = "";
+  const refuseReason = "";
 
 useEffect(() => {
     fetchPurchaseRequestById(Number(id));
