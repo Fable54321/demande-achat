@@ -1,4 +1,5 @@
 import {
+  AlertCircle,
   CheckCircle2,
   DollarSign,
   PackageCheck,
@@ -23,6 +24,7 @@ const formatCurrency = (value: number) =>
 const AdminApproval = () => {
   const [submitSuccess, setSubmitSuccess] = useState(false)
   const [isOverlayOpen, setIsOverlayOpen] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   const { id, token } = useParams<{
   id: string
@@ -30,9 +32,9 @@ const AdminApproval = () => {
 }>()
 
   const { selectedPurchaseRequest, saveAdminDecision, fetchPurchaseRequestById } = usePurchaseRequests();
-  const [isApproved, setIsApproved] = useState<boolean>(false);
+  const [isApproved, setIsApproved] = useState<boolean | null>(null);
+  const [refuseReason, setRefuseReason] = useState("")
   const note = "";
-  const refuseReason = "";
   const email = selectedPurchaseRequest?.request_email ?? null
 
 useEffect(() => {
@@ -42,13 +44,20 @@ useEffect(() => {
 
 const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
   e.preventDefault()
+  setSubmitError(null)
+  setSubmitSuccess(false)
 
-  if (!selectedPurchaseRequest || !id || !token) return
+  if (!selectedPurchaseRequest || !id || !token || isApproved === null) return
+
+  if (!isApproved && !refuseReason.trim()) {
+    setSubmitError("La raison du refus est requise.")
+    return
+  }
 
   const payload = {
     approved: isApproved,
     admin_note: note,
-    rejection_reason: refuseReason,
+    rejection_reason: isApproved ? null : refuseReason.trim(),
   }
 
   const updatedRequest = await saveAdminDecision(Number(id), token, payload)
@@ -90,6 +99,13 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
             <div className="flex items-start gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
               <CheckCircle2 className="mt-0.5 shrink-0" size={18} />
               <span>Le prix demandé a ete confirmé.</span>
+            </div>
+          )}
+
+          {submitError && (
+            <div className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+              <AlertCircle className="mt-0.5 shrink-0" size={18} />
+              <span>{submitError}</span>
             </div>
           )}
 
@@ -171,7 +187,10 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         name="adminDecision"
         value="approved"
         checked={isApproved === true}
-        onChange={() => setIsApproved(true)}
+        onChange={() => {
+          setIsApproved(true)
+          setSubmitError(null)
+        }}
         className="mt-1 h-4 w-4 accent-green-700"
         required
       />
@@ -196,7 +215,10 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         name="adminDecision"
         value="rejected"
         checked={isApproved === false}
-        onChange={() => setIsApproved(false)}
+        onChange={() => {
+          setIsApproved(false)
+          setSubmitError(null)
+        }}
         className="mt-1 h-4 w-4 accent-red-700"
         required
       />
@@ -209,6 +231,23 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
       </span>
     </label>
   </div>
+
+  {isApproved === false && (
+    <label className="flex flex-col gap-2 text-sm font-bold text-slate-700">
+      Raison du refus
+      <textarea
+        value={refuseReason}
+        onChange={(event) => {
+          setRefuseReason(event.target.value)
+          setSubmitError(null)
+        }}
+        rows={4}
+        required
+        placeholder="Expliquez pourquoi la demande est refusée."
+        className="min-h-28 resize-y rounded-lg border border-secondary/20 bg-white px-3 py-3 text-sm font-semibold leading-6 text-slate-800 shadow-sm outline-none transition placeholder:font-medium placeholder:text-slate-400 focus:border-secondary focus:ring-4 focus:ring-primary/20"
+      />
+    </label>
+  )}
 </div>
 
           <div className="flex flex-col gap-1">
