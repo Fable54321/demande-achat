@@ -257,30 +257,32 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
           </label>
         </div>
 
-        <div className="flex flex-col gap-3 border-t border-secondary/10 bg-slate-50 px-5 py-4 tablet:flex-row tablet:items-center tablet:justify-between tablet:px-8">
-          <p className="text-sm text-slate-500">
-            La confirmation d'achat finale sera faite plus tard.
-          </p>
+        <div className="flex flex-col gap-4 border-t border-secondary/10 bg-slate-50 px-5 py-4 tablet:flex-row tablet:items-center tablet:justify-between tablet:px-8">
+          <div className="max-w-md">
+            <p className="text-sm font-bold text-slate-700">
+              Validation de la demande
+            </p>
+            <p className="mt-1 text-sm leading-6 text-slate-500">
+              Si des informations manquent, contactez le demandeur. Sinon,
+              confirmez que le prix semble raisonnable.
+            </p>
+          </div>
 
-<div className="flex flex-col gap-2">
- {email && (
-    <>
-    <p className="text-sm">Dans un cas où il manque d'information vous pouvez :</p>
+          <div className="flex w-full flex-col gap-2 tablet:w-auto tablet:min-w-72">
+            {email && (
     <button
       type="button"
-      className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-[#C9A227] px-6 font-black text-white shadow-lg shadow-[#C9A227]/25 transition hover:cursor-pointer hover:bg-[#B89120] focus:outline-none focus:ring-4 focus:ring-[#C9A227]/30"
+      className="inline-flex h-12 items-center justify-center gap-2 rounded-lg border border-[#C9A227]/35 bg-white px-6 font-black text-[#7A5D00] shadow-sm transition hover:cursor-pointer hover:bg-[#fff7dc] focus:outline-none focus:ring-4 focus:ring-[#C9A227]/25"
       onClick={() => setIsOverlayOpen(true)}
     >
       <Mail size={18} aria-hidden="true" />
-      Communiquer avec le demandeur
+      Demander de l'information
     </button>
-    
-    </>
   )}
-
           <button
             type="submit"
-            className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-secondary px-6 font-black text-white shadow-lg shadow-secondary/20 transition hover:cursor-pointer hover:bg-[#3f610f] focus:outline-none focus:ring-4 focus:ring-primary/30"
+            disabled={loading}
+            className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-secondary px-6 font-black text-white shadow-lg shadow-secondary/20 transition hover:cursor-pointer hover:bg-[#3f610f] focus:outline-none focus:ring-4 focus:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-55"
           >
             <Send size={18} aria-hidden="true" />
             {loading ?  "Envoi en cours..." : "Confirmer le prix"}
