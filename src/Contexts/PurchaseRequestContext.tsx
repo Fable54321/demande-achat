@@ -75,6 +75,8 @@ reason: string | null
   admin_surname?: string | null
   purchased_by_name?: string | null
   purchased_by_surname?: string | null
+
+  final_supplier?: string | null
 }
 
 export interface CreatePurchaseRequestPayload {
@@ -152,7 +154,8 @@ createPurchaseRequest: (
   ) => Promise<PurchaseRequest | null>
   markPurchaseRequestAsPurchased: (
     id: number,
-    payload: MarkPurchasedPayload
+    token: string,
+    formData: FormData
   ) => Promise<PurchaseRequest | null>
   cancelPurchaseRequest: (
     id: number,
@@ -420,43 +423,43 @@ const createPurchaseRequest = useCallback(
     []
   )
 
-  const markPurchaseRequestAsPurchased = useCallback(
-    async (id: number, payload: MarkPurchasedPayload) => {
-      try {
-        setLoading(true)
-        setError(null)
+const markPurchaseRequestAsPurchased = useCallback(
+  async (id: number, token: string, formData: FormData) => {
+    try {
+      setLoading(true)
+      setError(null)
 
-        const data = await request<PurchaseRequest>(
-          `/purchase-request/${id}/mark-purchased`,
-          {
-            method: "PATCH",
-            body: JSON.stringify(payload),
-          }
-        )
+      const data = await request<PurchaseRequest>(
+        `/purchase-request/${id}/mark-purchased/${encodeURIComponent(token)}`,
+        {
+          method: "PATCH",
+          body: formData,
+        },
+      )
 
-        setPurchaseRequests((prev) =>
-          prev.map((request) => (request.id === id ? data : request))
-        )
+      setPurchaseRequests((prev) =>
+        prev.map((request) => (request.id === id ? data : request)),
+      )
 
-        setSelectedPurchaseRequest((prev) =>
-          prev?.id === id ? data : prev
-        )
+      setSelectedPurchaseRequest((prev) =>
+        prev?.id === id ? data : prev,
+      )
 
-        return data
-      } catch (error) {
-        const message =
-          error instanceof Error
-            ? error.message
-            : "Erreur lors du marquage comme acheté"
+      return data
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Erreur lors de la confirmation d'achat"
 
-        setError(message)
-        return null
-      } finally {
-        setLoading(false)
-      }
-    },
-    []
-  )
+      setError(message)
+      return null
+    } finally {
+      setLoading(false)
+    }
+  },
+  [],
+)
 
   const cancelPurchaseRequest = useCallback(
     async (id: number, rejection_reason?: string) => {

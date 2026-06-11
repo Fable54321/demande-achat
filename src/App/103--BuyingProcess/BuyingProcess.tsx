@@ -16,6 +16,17 @@ import { isValidPrice, sanitizePrice, stripUnsafeText } from "../100-Form/Utils/
 
 const MAX_PURCHASE_REFERENCE_LENGTH = 120
 const MAX_PURCHASE_NOTE_LENGTH = 600
+const MAX_PURCHASE_DOCUMENTS = 5
+const MAX_PURCHASE_DOCUMENT_SIZE_MB = 7
+const MAX_PURCHASE_DOCUMENT_SIZE_BYTES =
+  MAX_PURCHASE_DOCUMENT_SIZE_MB * 1024 * 1024
+
+const ACCEPTED_PURCHASE_DOCUMENT_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "application/pdf",
+]
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("fr-CA", {
@@ -29,8 +40,10 @@ const BuyingProcess = () => {
   const [purchaseNote, setPurchaseNote] = useState("")
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [submitSuccess, setSubmitSuccess] = useState(false)
+  const [finalSupplier, setFinalSupplier] = useState("")
+const [purchaseDocuments, setPurchaseDocuments] = useState<File[]>([])
 
-  const { id } = useParams<{ id: string; token: string }>()
+  const { id, token } = useParams<{ id: string; token: string }>()
 
   const {
     fetchPurchaseRequestById,
@@ -67,12 +80,46 @@ const BuyingProcess = () => {
     return unitPrice * selectedPurchaseRequest.quantity
   }, [effectiveFinalUnitPrice, selectedPurchaseRequest])
 
+
+  const handlePurchaseDocumentChange = (
+  event: React.ChangeEvent<HTMLInputElement>,
+) => {
+  const selectedFiles = Array.from(event.target.files ?? [])
+
+  if (!selectedFiles.length) return
+
+  const validFiles = selectedFiles.filter((file) => {
+    return (
+      ACCEPTED_PURCHASE_DOCUMENT_TYPES.includes(file.type) &&
+      file.size <= MAX_PURCHASE_DOCUMENT_SIZE_BYTES
+    )
+  })
+
+  if (validFiles.length !== selectedFiles.length) {
+    setSubmitError(
+      `Certains fichiers ont été ignorés. Formats acceptés: JPG, PNG, WEBP ou PDF. Maximum ${MAX_PURCHASE_DOCUMENT_SIZE_MB} MB par fichier.`,
+    )
+  }
+
+  setPurchaseDocuments((currentFiles) =>
+    [...currentFiles, ...validFiles].slice(0, MAX_PURCHASE_DOCUMENTS),
+  )
+
+  event.target.value = ""
+}
+
+const removePurchaseDocument = (indexToRemove: number) => {
+  setPurchaseDocuments((currentFiles) =>
+    currentFiles.filter((_, index) => index !== indexToRemove),
+  )
+}
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setSubmitError(null)
     setSubmitSuccess(false)
 
-    if (!selectedPurchaseRequest || !id) return
+    if (!selectedPurchaseRequest || !id || !token) return
 
     const safeFinalUnitPrice =
       finalUnitPrice.trim() === ""
@@ -91,13 +138,31 @@ const BuyingProcess = () => {
       setSubmitError("Le prix final doit etre un montant valide.")
       return
     }
+const formData = new FormData()
 
-    const updatedRequest = await markPurchaseRequestAsPurchased(Number(id), {
-      purchased_by_user_id: 1,
-      final_unit_price: safeFinalUnitPrice,
-      purchase_reference: safePurchaseReference || null,
-      purchase_note: safePurchaseNote || null,
-    })
+formData.append("final_unit_price", String(safeFinalUnitPrice))
+
+if (finalSupplier.trim()) {
+  formData.append("final_supplier", stripUnsafeText(finalSupplier, 120).trim())
+}
+
+if (safePurchaseReference) {
+  formData.append("purchase_reference", safePurchaseReference)
+}
+
+if (safePurchaseNote) {
+  formData.append("purchase_note", safePurchaseNote)
+}
+
+purchaseDocuments.forEach((file) => {
+  formData.append("purchase_documents", file)
+})
+
+const updatedRequest = await markPurchaseRequestAsPurchased(
+  Number(id),
+  token,
+  formData
+)
 
     if (updatedRequest) {
       setSubmitSuccess(true)
@@ -215,7 +280,7 @@ const BuyingProcess = () => {
                 </dl>
               </div>
 
-              <div className="grid gap-4 tablet:grid-cols-2">
+              <div className="grid gap-4 tablet:grid-cols-3">
                 <label className="flex flex-col gap-2 text-base font-bold text-slate-700">
                   Prix unitaire final
                   <input
@@ -261,10 +326,79 @@ const BuyingProcess = () => {
                   />
                 </label>
 
+                <label className="flex flex-col gap-2 text-base font-bold text-slate-700">
+  Fournisseur final
+  <input
+    type="text"
+    value={finalSupplier}
+    onChange={(event) =>
+      setFinalSupplier(stripUnsafeText(event.target.value, 120))
+    }
+    maxLength={120}
+    placeholder={
+      selectedPurchaseRequest.final_supplier ||
+      selectedPurchaseRequest.buyer_confirmed_supplier ||
+      selectedPurchaseRequest.requested_supplier ||
+      "Fournisseur utilisé pour l'achat"
+    }
+    className="h-13 min-h-13 rounded-lg border border-secondary/20 bg-white px-3 text-base font-semibold text-slate-800 shadow-sm outline-none transition focus:border-secondary focus:ring-4 focus:ring-primary/20"
+  />
+</label>
+
                 <div className="rounded-lg border border-secondary/15 bg-tertiary/70 px-4 py-3 text-base leading-7 text-slate-700 tablet:col-span-2">
                   <span className="font-bold text-secondary">Total final: </span>
                   {finalTotal !== null ? formatCurrency(finalTotal) : "A calculer"}
                 </div>
+
+                <div className="flex flex-col gap-3 tablet:col-span-2">
+  <label className="flex cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-secondary/30 bg-tertiary/50 px-4 py-5 text-center transition hover:border-secondary hover:bg-primary/10">
+    <ReceiptText className="mb-2 text-secondary" size={28} aria-hidden="true" />
+
+    <span className="text-sm font-bold text-secondary">
+      Ajouter une facture, un reçu ou une confirmation
+    </span>
+
+    <span className="mt-1 text-xs text-slate-500">
+      {purchaseDocuments.length}/{MAX_PURCHASE_DOCUMENTS} fichier(s) · JPG, PNG,
+      WEBP ou PDF · Maximum {MAX_PURCHASE_DOCUMENT_SIZE_MB} MB
+    </span>
+
+    <input
+      type="file"
+      accept="image/jpeg,image/png,image/webp,application/pdf"
+      multiple
+      className="hidden"
+      disabled={purchaseDocuments.length >= MAX_PURCHASE_DOCUMENTS}
+      onChange={handlePurchaseDocumentChange}
+    />
+  </label>
+
+  {purchaseDocuments.length > 0 && (
+    <div className="grid gap-2">
+      {purchaseDocuments.map((file, index) => (
+        <div
+          key={`${file.name}-${file.lastModified}-${index}`}
+          className="flex items-center justify-between gap-3 rounded-lg border border-secondary/15 bg-white px-3 py-2 text-sm shadow-sm"
+        >
+          <div className="min-w-0">
+            <p className="truncate font-bold text-slate-700">{file.name}</p>
+            <p className="text-xs text-slate-500">
+              {(file.size / 1024 / 1024).toFixed(2)} MB
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => removePurchaseDocument(index)}
+            className="rounded-md px-3 py-1 text-xs font-bold text-red-700 transition hover:bg-red-50"
+          >
+            Retirer
+          </button>
+        </div>
+      ))}
+    </div>
+  )}
+</div>
 
                 <label className="flex flex-col gap-2 text-base font-bold text-slate-700 tablet:col-span-2">
                   Note d'achat
