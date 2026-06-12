@@ -13,6 +13,7 @@ import { useParams } from "react-router-dom"
 import { usePurchaseRequests } from "../../Contexts/PurchaseRequestContext"
 import { useEffect, useState } from "react"
 import SendEmailOverlay from "../SendEmailOverlay"
+import SuccesOverlay from "../SuccesOverlay"
 
 
 
@@ -69,8 +70,20 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
   }
 }
 
+const name = "Michelle";
+const successMessage = "l'achat a bien été approuvé";
+
   return (
     <section className="w-full px-4 pb-10 pt-6 tablet:px-8 ">
+         {submitSuccess && 
+             
+                <SuccesOverlay
+                successMessage={successMessage}
+                onClose={() => setSubmitSuccess(false)}
+                name={name}
+                />
+             
+            }
       <form
         onSubmit={handleSubmit}
         className="mx-auto flex w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-secondary/15 bg-white shadow-2xl shadow-secondary/10"

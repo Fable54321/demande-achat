@@ -49,6 +49,7 @@ import {
   stripUnsafeText,
 } from "./Utils/sanitizers"
 import Field from "./Field"
+import SuccesOverlay from "../SuccesOverlay"
 
 
 
@@ -317,12 +318,33 @@ const createdRequest = await createPurchaseRequest(formData, formToken)
   setImages([])
   setSubmitSuccess(true)
 
+  window.scrollTo({
+    top: 0,
+    behavior: "smooth",
+  })
+
   setTimeout(() => {
     setSubmitSuccess(false)
+    location.reload()
   }, 5000)
 }
+
+
+const successMessage = "Votre demande d'achat a bien été envoyée"
+
+
+
   return (
-    <section className="w-full px-4 pb-10 pt-6 tablet:px-8">
+    <section className={`relative w-full px-4 pb-10 pt-6 tablet:px-8 ${submitSuccess ? "pointer-events-none" : ""}`}>
+      {submitSuccess && 
+       
+          <SuccesOverlay
+          successMessage={successMessage}
+          onClose={() => setSubmitSuccess(false)}
+          name={selectedEmployee?.surname ? selectedEmployee.surname : name}
+          />
+       
+      }
       <form
         onSubmit={handleSubmit}
         className="mx-auto flex w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-secondary/15 bg-white shadow-2xl shadow-secondary/10"
