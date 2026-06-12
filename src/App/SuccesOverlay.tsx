@@ -14,7 +14,7 @@ const SuccesOverlay = (  { onClose, successMessage, name }: SuccesOverlayProps) 
       className="bg-white/95
         overlay-animation
        border-black/50 
-       border-3 px-4 py-8 flex flex-col items-center w-[min(98%,350px)] rounded-xl absolute top-1/6 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50"
+       border-3 px-4 py-8 flex flex-col items-center w-[min(98%,350px)] rounded-xl absolute top-[40vh] left-1/2 -translate-x-1/2 -translate-y-1/2 z-50"
       role="dialog"
       aria-modal="true"
       aria-labelledby="send-email-title"

@@ -66,12 +66,22 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
   const updatedRequest = await saveAdminDecision(Number(id), token, payload)
 
   if (updatedRequest) {
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    })
     setSubmitSuccess(true)
+
+    setTimeout(() => {
+      setSubmitSuccess(false)
+      window.location.replace("https://vegibec-portail.com/")
+    }, 4000)
+
   }
 }
 
 const name = "Michelle";
-const successMessage = "l'achat a bien été approuvé";
+const successMessage = "la décision a bien été envoyée";
 
   return (
     <section className="w-full px-4 pb-10 pt-6 tablet:px-8 ">

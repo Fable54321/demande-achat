@@ -13,6 +13,7 @@ import { useParams } from "react-router-dom"
 import { usePurchaseRequests } from "../../Contexts/PurchaseRequestContext"
 import { MAX_PRICE } from "../100-Form/Utils/formConstants"
 import { isValidPrice, sanitizePrice, stripUnsafeText } from "../100-Form/Utils/sanitizers"
+import SuccesOverlay from "../SuccesOverlay"
 
 const MAX_PURCHASE_REFERENCE_LENGTH = 120
 const MAX_PURCHASE_NOTE_LENGTH = 600
@@ -176,11 +177,33 @@ const BuyingProcess = () => {
 
     if (updatedRequest) {
       setSubmitSuccess(true)
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth",
+      })
+
+      setTimeout(() => {
+        setSubmitSuccess(false)
+        window.location.replace("https://vegibec-portail.com/")
+      }, 4000)
     }
   }
 
+  const name = "Ricardo"
+
+  const successMessage = "les informations d'achats ont bien été sauvegardées."
+
   return (
     <section className="relative w-full px-4 pb-10 pt-6 tablet:px-8">
+         {submitSuccess && 
+             
+                <SuccesOverlay
+                successMessage={successMessage}
+                onClose={() => setSubmitSuccess(false)}
+                name={name}
+                />
+             
+            }
       <form
         onSubmit={handleSubmit}
         className="mx-auto flex w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-secondary/15 bg-white shadow-2xl shadow-secondary/10"
@@ -429,7 +452,7 @@ const BuyingProcess = () => {
                     maxLength={MAX_PURCHASE_NOTE_LENGTH}
                     placeholder={
                       selectedPurchaseRequest.purchase_note ||
-                      "Détails utiles: fournisseur final, livraison, garantie, emplacement, suivi, etc."
+                      "Détails utiles: livraison, garantie, emplacement, suivi, etc."
                     }
                     className="min-h-32 resize-y rounded-lg border border-secondary/20 bg-white px-3 py-3 text-base font-semibold leading-7 text-slate-800 shadow-sm outline-none transition placeholder:font-medium placeholder:text-slate-400 focus:border-secondary focus:ring-4 focus:ring-primary/20"
                   />

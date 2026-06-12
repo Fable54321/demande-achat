@@ -80,13 +80,23 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
   const updatedRequest = await validateBuyerPrice(Number(id), token, payload)
 
   if (updatedRequest) {
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    })
     setSubmitSuccess(true)
+
+    setTimeout(() => {
+      setSubmitSuccess(false)
+      window.location.replace("https://vegibec-portail.com/")
+    }, 4000)
+
   }
 }
 
 const name = "Ricardo"
 
-const successMessage = "la confirmation de prix a bien ete envoyée"
+const successMessage = "la confirmation de prix a bien été envoyée"
 
   return (
     <section className="w-full px-4 pb-10 pt-6 tablet:px-8 relative">

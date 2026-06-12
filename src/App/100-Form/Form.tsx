@@ -326,7 +326,7 @@ const createdRequest = await createPurchaseRequest(formData, formToken)
   setTimeout(() => {
     setSubmitSuccess(false)
     location.reload()
-  }, 5000)
+  }, 4000)
 }
 
 
