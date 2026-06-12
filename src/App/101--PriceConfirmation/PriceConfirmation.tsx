@@ -300,7 +300,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
           
         />
       )}
-      {submitSuccess && <p className="mt-4 text-green-600 text-[1.2em]">La demande a bien été envoyée.</p>}
+      {submitSuccess && <p className="mt-4 text-green-600 text-[1.2em]">Le prix a bien été confirmé.</p>}
     </section>
   )
 }
