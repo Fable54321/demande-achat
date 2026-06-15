@@ -33,7 +33,8 @@ const router = createBrowserRouter([
   {
     path: "/requete/:id/acheter/:token",
     element: <BuyingProcess />
-  }
+  },
+ 
  
 ]);
 

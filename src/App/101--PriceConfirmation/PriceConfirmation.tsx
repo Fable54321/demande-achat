@@ -1,6 +1,7 @@
 import {
   CheckCircle2,
   DollarSign,
+  ExternalLink,
   Mail,
   PackageCheck,
   Send,
@@ -154,6 +155,20 @@ const successMessage = "la confirmation de prix a bien été envoyée"
                 
                    
                   {selectedPurchaseRequest?.description && <p className="mt-1 ml-2 leading-6 text-slate-900"><span className="font-bold">Produit:</span> <br/> {selectedPurchaseRequest.description}</p>}
+                  {selectedPurchaseRequest?.product_link && (
+                    <div className="mt-1 ml-2 leading-6 text-slate-900">
+                      <p className="font-bold">Lien vers le produit:</p>
+                      <a
+                        href={selectedPurchaseRequest.product_link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-1 inline-flex max-w-full items-center gap-2 rounded-lg border border-secondary/15 bg-white px-3 py-2 text-sm font-bold text-secondary shadow-sm transition hover:border-secondary/35 hover:bg-primary/10"
+                      >
+                        <ExternalLink size={16} className="shrink-0" aria-hidden="true" />
+                        <span className="truncate">Voir le produit</span>
+                      </a>
+                    </div>
+                  )}
                 
                 {selectedPurchaseRequest?.reason && <p className="mt-1 ml-2 leading-6 text-slate-900" ><span className="font-bold">Justification:</span> <br/> {selectedPurchaseRequest.reason}</p>}
               </div>
@@ -192,7 +207,6 @@ const successMessage = "la confirmation de prix a bien été envoyée"
               </div>
             </dl>
           </div>
-          
           <div className="grid gap-4 tablet:grid-cols-2">
 <div className="flex items-start gap-3 rounded-lg border border-secondary/15 bg-tertiary/70 px-4 py-3 text-sm leading-6 text-slate-600 tablet:col-span-2">
   <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-secondary/10 text-secondary">
