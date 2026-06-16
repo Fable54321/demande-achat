@@ -1,7 +1,6 @@
 import {
   AlertCircle,
   Calendar,
-  CheckCircle2,
   DollarSign,
   Hash,
   ImagePlus,
@@ -40,8 +39,6 @@ import {
   MAX_QUANTITY,
 } from "./Utils/formConstants"
 import {
-  isValidHttpUrl,
-  isValidPrice,
   sanitizeName,
   sanitizePrice,
   sanitizeQuantity,
@@ -50,6 +47,7 @@ import {
 } from "./Utils/sanitizers"
 import Field from "./Field"
 import SuccesOverlay from "../SuccesOverlay"
+import { validatePurchaseRequestForm } from "./Utils/validatePurchaseRequestForm"
 
 
 
@@ -59,7 +57,7 @@ const Form = () => {
   
 
 
-  const { getPurchaseRequestFormToken, createPurchaseRequest, loading, error, employees } =
+  const { getPurchaseRequestFormToken, createPurchaseRequest, loading, employees } =
   usePurchaseRequests()
 
   const [formToken, setFormToken] = useState<string | null>(null)
@@ -68,6 +66,7 @@ const Form = () => {
   const [isRefreshingFormToken, setIsRefreshingFormToken] = useState(false)
 
   const [name, setName] = useState("")
+  const [submittedByName, setSubmittedByName] = useState("")
   const [email, setEmail] = useState("")
   const [description, setDescription] = useState("")
   const [justification, setJustification] = useState("")
@@ -212,6 +211,20 @@ useEffect(() => {
   }
 }, [imagePreviews])
 
+
+const resetForm = () => {
+  setName("")
+  setDescription("")
+  setJustification("")
+  setSelectedEmployee(null)
+  setEmail("")
+  setPrice("")
+  setLink("")
+  setExpectedDate("")
+  setImages([])
+  setQuantity("1")
+}
+
 const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
   e.preventDefault()
 
@@ -224,109 +237,71 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
   }
 
   if (!formToken || isFormTokenExpired) {
-    setSubmitError("Le formulaire a expire. Rafraichissez-le avant de soumettre la demande.")
-    console.error(error)
+    setSubmitError(
+      "Le formulaire a expiré. Rafraîchissez-le avant de soumettre la demande.",
+    )
     return
   }
 
-  const safeName = sanitizeName(name).trim().replace(/\s+/g, " ")
-  const safeDescription = stripUnsafeText(
+  const validation = validatePurchaseRequestForm({
+    name,
     description,
-    MAX_DESCRIPTION_LENGTH,
-  ).trim()
-  const safeJustification = stripUnsafeText(
     justification,
-    MAX_JUSTIFICATION_LENGTH,
-  ).trim()
-  const safeQuantity = Number(sanitizeQuantity(quantity))
-  const safePrice = price ? Number(sanitizePrice(price)) : null
-  const safeLink = sanitizeUrl(link)
-  const safeExpectedDate = expectedDate.trim()
-  const safeEmail = email ? email.trim() : null
+    quantity,
+    price,
+    link,
+    expectedDate,
+    email,
+    images,
+    minExpectedDateObject,
+  })
 
-  if (!safeName) {
-    setSubmitError("Le nom du demandeur est requis.")
+  if (!validation.ok) {
+    setSubmitError(validation.error)
     return
   }
 
-  if (!safeDescription) {
-    setSubmitError("La description de la demande est requise.")
-    return
-  }
+  const values = validation.values
 
-  if (
-    !Number.isInteger(safeQuantity) ||
-    safeQuantity < 1 ||
-    safeQuantity > MAX_QUANTITY
-  ) {
-    setSubmitError(`La quantité doit être entre 1 et ${MAX_QUANTITY}.`)
-    return
-  }
+  const submittedName = values.name
 
-  if (
-    safePrice !== null &&
-    !isValidPrice(safePrice)
-  ) {
-    setSubmitError("Le prix doit être un montant valide.")
-    return
-  }
-
-  if (!isValidHttpUrl(safeLink)) {
-    setSubmitError("Le lien doit commencer par http:// ou https://.")
-    return
-  }
-
-  if (
-    safeExpectedDate &&
-    (!isValidIsoDate(safeExpectedDate) ||
-      parseDateInputValue(safeExpectedDate) < minExpectedDateObject)
-  ) {
-    setSubmitError("La date attendue doit etre aujourd'hui ou plus tard.")
-    return
-  }
-
-const formData = buildPurchaseRequestFormData({
-  description: safeDescription,
-  expectedDate: safeExpectedDate,
-  images,
-  justification: safeJustification,
-  link: safeLink,
-  name: safeName,
-  price: safePrice,
-  quantity: safeQuantity,
-  email: safeEmail,
-})
+  const formData = buildPurchaseRequestFormData({
+    description: values.description,
+    expectedDate: values.expectedDate,
+    images,
+    justification: values.justification,
+    link: values.link,
+    name: values.name,
+    price: values.price,
+    quantity: values.quantity,
+    email: values.email,
+  })
 
 const createdRequest = await createPurchaseRequest(formData, formToken)
 
-  if (!createdRequest) return
+if (!createdRequest) return
 
-  const newToken = await getPurchaseRequestFormToken()
-  setFormToken(newToken?.token ?? null)
-  setFormTokenExpiresAt(newToken?.expires_at ?? null)
-  setIsFormTokenExpired(false)
+const newToken = await getPurchaseRequestFormToken()
 
-  setName("")
-  setDescription("")
-  setJustification("")
-  setSelectedEmployee(null)
-  setEmail("")
-  setPrice("")
-  setLink("")
-  setExpectedDate("")
-  setSubmitError(null)
-  setImages([])
-  setSubmitSuccess(true)
+setFormToken(newToken?.token ?? null)
+setFormTokenExpiresAt(newToken?.expires_at ?? null)
+setIsFormTokenExpired(false)
 
-  window.scrollTo({
-    top: 0,
-    behavior: "smooth",
-  })
+setSubmittedByName(submittedName)
 
-  setTimeout(() => {
-    setSubmitSuccess(false)
-    location.reload()
-  }, 4000)
+resetForm()
+
+setSubmitError(null)
+setSubmitSuccess(true)
+
+window.scrollTo({
+  top: 0,
+  behavior: "smooth",
+})
+
+setTimeout(() => {
+  setSubmitSuccess(false)
+}, 4000)
 }
 
 
@@ -335,13 +310,13 @@ const successMessage = "Votre demande d'achat a bien été envoyée"
 
 
   return (
-    <section className={`relative w-full px-4 pb-10 pt-6 tablet:px-8 ${submitSuccess ? "pointer-events-none" : ""}`}>
+    <section className={`relative w-full px-4 pb-10 pt-6 tablet:px-8 `}>
       {submitSuccess && 
        
           <SuccesOverlay
           successMessage={successMessage}
           onClose={() => setSubmitSuccess(false)}
-          name={selectedEmployee?.surname ? selectedEmployee.surname : name}
+          name={submittedByName}
           />
        
       }
@@ -379,19 +354,14 @@ const successMessage = "Votre demande d'achat a bien été envoyée"
             </div>
           )}
 
-          {submitSuccess && (
-            <div className="flex items-start gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-green-800">
-              <CheckCircle2 className="mt-0.5 shrink-0" size={18} />
-              <span>La demande d'achat a été créée avec succès.</span>
-            </div>
-          )}
+        
 
           {isFormTokenExpired && (
             <div className="flex flex-col gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 tablet:flex-row tablet:items-center tablet:justify-between">
               <div className="flex items-start gap-3">
                 <AlertCircle className="mt-0.5 shrink-0" size={18} />
                 <span>
-                  Ce formulaire a expire. Rafraichissez-le avant de soumettre la demande.
+                  Ce formulaire a expiré. Rafraîchissez-le avant de soumettre la demande.
                 </span>
               </div>
 
@@ -753,7 +723,7 @@ const successMessage = "Votre demande d'achat a bien été envoyée"
           </button>
         </div>
       </form>
-      {submitSuccess && <p className="mt-4 text-green-600 text-[1.2em]">La demande a bien été envoyée.</p>}
+      
     </section>
   )
 }
