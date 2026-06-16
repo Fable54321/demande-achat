@@ -90,24 +90,42 @@ const Form = () => {
     [employees],
   )
 
-  const refreshFormToken = useCallback(async () => {
-    try {
-      setIsRefreshingFormToken(true)
-      setSubmitError(null)
+const refreshFormToken = useCallback(async () => {
+  try {
+    setIsRefreshingFormToken(true)
+    setSubmitError(null)
 
-      const tokenData = await getPurchaseRequestFormToken()
+    const tokenData = await getPurchaseRequestFormToken()
 
-      setFormToken(tokenData?.token ?? null)
-      setFormTokenExpiresAt(tokenData?.expires_at ?? null)
-      setIsFormTokenExpired(false)
-    } finally {
-      setIsRefreshingFormToken(false)
+    if (!tokenData?.token) {
+      setFormToken(null)
+      setFormTokenExpiresAt(null)
+      setIsFormTokenExpired(true)
+      setSubmitError(
+        "Impossible de préparer le formulaire. Veuillez réessayer.",
+      )
+      return
     }
-  }, [getPurchaseRequestFormToken])
 
-  useEffect(() => {
-    refreshFormToken()
-  }, [refreshFormToken])
+    setFormToken(tokenData.token)
+    setFormTokenExpiresAt(tokenData.expires_at ?? null)
+    setIsFormTokenExpired(false)
+  } catch (error) {
+    console.error("Purchase request form token refresh failed:", error)
+
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Impossible de préparer le formulaire. Veuillez réessayer."
+
+    setFormToken(null)
+    setFormTokenExpiresAt(null)
+    setIsFormTokenExpired(true)
+    setSubmitError(message)
+  } finally {
+    setIsRefreshingFormToken(false)
+  }
+}, [getPurchaseRequestFormToken])
 
   useEffect(() => {
     if (!formTokenExpiresAt) return
@@ -232,7 +250,8 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
   setSubmitSuccess(false)
 
   if (companyWebsite.trim()) {
-    setSubmitError("La demande n'a pas pu etre envoyée.")
+    setSubmitError("La demande n'a pas pu être envoyée.")
+    window.scrollTo({ top: 0, behavior: "smooth" })
     return
   }
 
@@ -240,6 +259,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     setSubmitError(
       "Le formulaire a expiré. Rafraîchissez-le avant de soumettre la demande.",
     )
+    window.scrollTo({ top: 0, behavior: "smooth" })
     return
   }
 
@@ -258,11 +278,11 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 
   if (!validation.ok) {
     setSubmitError(validation.error)
+    window.scrollTo({ top: 0, behavior: "smooth" })
     return
   }
 
   const values = validation.values
-
   const submittedName = values.name
 
   const formData = buildPurchaseRequestFormData({
@@ -277,31 +297,64 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     email: values.email,
   })
 
-const createdRequest = await createPurchaseRequest(formData, formToken)
+  try {
+    const createdRequest = await createPurchaseRequest(formData, formToken)
 
-if (!createdRequest) return
+    if (!createdRequest) {
+      setSubmitError(
+        "La demande n'a pas pu être envoyée. Veuillez réessayer.",
+      )
+      window.scrollTo({ top: 0, behavior: "smooth" })
+      return
+    }
 
-const newToken = await getPurchaseRequestFormToken()
+    const newToken = await getPurchaseRequestFormToken()
 
-setFormToken(newToken?.token ?? null)
-setFormTokenExpiresAt(newToken?.expires_at ?? null)
-setIsFormTokenExpired(false)
+    if (!newToken?.token) {
+      setSubmitError(
+        "La demande a été envoyée, mais le formulaire n'a pas pu être réinitialisé correctement. Veuillez rafraîchir la page avant d'envoyer une autre demande.",
+      )
+      setSubmitSuccess(true)
+      setSubmittedByName(submittedName)
+      resetForm()
+      window.scrollTo({ top: 0, behavior: "smooth" })
+      return
+    }
 
-setSubmittedByName(submittedName)
+    setFormToken(newToken.token)
+    setFormTokenExpiresAt(newToken.expires_at ?? null)
+    setIsFormTokenExpired(false)
 
-resetForm()
+    setSubmittedByName(submittedName)
 
-setSubmitError(null)
-setSubmitSuccess(true)
+    resetForm()
 
-window.scrollTo({
-  top: 0,
-  behavior: "smooth",
-})
+    setSubmitError(null)
+    setSubmitSuccess(true)
 
-setTimeout(() => {
-  setSubmitSuccess(false)
-}, 4000)
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    })
+
+    setTimeout(() => {
+      setSubmitSuccess(false)
+    }, 4000)
+  } catch (error) {
+    console.error("Purchase request submit failed:", error)
+
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Une erreur inattendue est survenue lors de l'envoi de la demande."
+
+    setSubmitError(message)
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    })
+  }
 }
 
 
