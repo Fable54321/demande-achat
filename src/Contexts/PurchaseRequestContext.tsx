@@ -95,6 +95,7 @@ export interface BuyerValidationPayload {
   buyer_user_id?: number | null
   buyer_confirmed_unit_price?: number | null
   buyer_confirmed_supplier?: string | null
+  expected_date?: string | null
   buyer_note?: string | null
   needs_requester_info?: boolean
   reject?: boolean

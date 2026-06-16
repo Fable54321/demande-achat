@@ -1,4 +1,5 @@
 import {
+  Calendar,
   CheckCircle2,
   DollarSign,
   ExternalLink,
@@ -7,10 +8,21 @@ import {
   Send,
   ShoppingBag,
   User,
+  X,
 } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import { useParams } from "react-router-dom"
 import { usePurchaseRequests } from "../../Contexts/PurchaseRequestContext"
+import DatePicker from "../100-Form/DatePicker"
+import { getMonthStart } from "../100-Form/Utils/getMonthStartandDays"
+import {
+  formatSelectedDate,
+  getDateFromToday,
+  isValidIsoDate,
+  monthFormatter,
+  parseDateInputValue,
+  toDateInputValue,
+} from "../100-Form/Utils/dateHelpers"
 import SendEmailOverlay from "../SendEmailOverlay"
 import SuccesOverlay from "../SuccesOverlay"
 
@@ -29,6 +41,11 @@ const PriceConfirmation = () => {
   const [confirmedUnitPrice, setConfirmedUnitPrice] = useState("")
 const [confirmedSupplier, setConfirmedSupplier] = useState("")
 const [buyerNote, setBuyerNote] = useState("")
+const [confirmedDate, setConfirmedDate] = useState("")
+const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
+const [calendarMonth, setCalendarMonth] = useState(() =>
+  getMonthStart(new Date()),
+)
 
 
 const [isOverlayOpen, setIsOverlayOpen] = useState(false);
@@ -57,6 +74,23 @@ const email = useMemo(() => {
   return null
 },[selectedPurchaseRequest]);
 
+const minExpectedDate = getDateFromToday(0)
+const minExpectedDateObject = parseDateInputValue(minExpectedDate)
+const selectedDateLabel = formatSelectedDate(confirmedDate)
+
+const selectConfirmedDate = (dateValue: string) => {
+  if (
+    !isValidIsoDate(dateValue) ||
+    parseDateInputValue(dateValue) < minExpectedDateObject
+  ) {
+    return
+  }
+
+  setConfirmedDate(dateValue)
+  setCalendarMonth(getMonthStart(parseDateInputValue(dateValue)))
+  setIsDatePickerOpen(false)
+}
+
   
 
 const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -75,6 +109,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     buyer_user_id: 1, // temporary, or your buyer user id
     buyer_confirmed_unit_price: finalConfirmedUnitPrice,
     buyer_confirmed_supplier: confirmedSupplier.trim() || null,
+    expected_date: confirmedDate || undefined,
     buyer_note: buyerNote.trim() || null,
   }
 
@@ -249,6 +284,58 @@ const successMessage = "la confirmation de prix a bien été envoyée"
       className="h-12 rounded-lg border border-secondary/20 bg-white px-3 text-sm font-semibold text-slate-800 shadow-sm outline-none transition focus:border-secondary focus:ring-4 focus:ring-primary/20"
     />
   </label>
+</div>
+
+<div className="flex flex-col gap-2 text-sm font-bold text-slate-700">
+  <span>Changement de la date</span>
+  <div className="flex flex-col gap-2 tablet:flex-row tablet:items-center">
+    <input type="hidden" name="confirmedDate" value={confirmedDate} />
+
+    <div className="relative tablet:flex-1">
+      <button
+        type="button"
+        className="flex min-h-12 w-full items-center justify-between gap-3 rounded-lg border border-secondary/20 bg-white px-3 text-left text-sm font-semibold text-slate-800 shadow-sm outline-none transition focus:border-secondary focus:ring-4 focus:ring-primary/20"
+        onClick={() => setIsDatePickerOpen((isOpen) => !isOpen)}
+        aria-expanded={isDatePickerOpen}
+        aria-haspopup="dialog"
+      >
+        <span className={selectedDateLabel ? "text-slate-900" : "text-slate-400"}>
+          {selectedDateLabel || "Choisir une date"}
+        </span>
+        <Calendar className="shrink-0 text-secondary" size={18} aria-hidden="true" />
+      </button>
+
+      {isDatePickerOpen && (
+        <DatePicker
+          setCalendarMonth={setCalendarMonth}
+          calendarMonth={calendarMonth}
+          monthFormatter={monthFormatter}
+          expectedDate={confirmedDate}
+          minExpectedDateObject={minExpectedDateObject}
+          selectExpectedDate={selectConfirmedDate}
+          toDateInputValue={toDateInputValue}
+        />
+      )}
+    </div>
+
+    {confirmedDate && (
+      <button
+        type="button"
+        className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-secondary/25 bg-white px-4 text-sm font-bold text-secondary transition hover:bg-secondary hover:text-white"
+        onClick={() => {
+          setConfirmedDate("")
+          setIsDatePickerOpen(false)
+        }}
+        aria-label="Effacer la date selectionnee"
+      >
+        <X size={18} aria-hidden="true" />
+        Effacer
+      </button>
+    )}
+  </div>
+  <span className="text-xs font-normal text-slate-500">
+    Laissez vide pour conserver la date de la demande.
+  </span>
 </div>
 
 <label className="flex flex-col gap-2 text-sm font-bold text-slate-700">
