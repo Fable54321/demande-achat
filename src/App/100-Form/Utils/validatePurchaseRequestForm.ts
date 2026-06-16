@@ -9,6 +9,7 @@ import {
   MAX_NAME_LENGTH,
   MAX_PRICE,
   MAX_QUANTITY,
+  MAX_QUANTITY_FORMAT_LENGTH,
 } from "./formConstants"
 
 import {
@@ -31,6 +32,7 @@ type ValidatePurchaseRequestFormParams = {
   description: string
   justification: string
   quantity: string
+  quantityFormat: string
   price: string
   link: string
   expectedDate: string
@@ -44,6 +46,7 @@ type ValidatedPurchaseRequestFormValues = {
   description: string
   justification: string
   quantity: number
+  quantityFormat: string
   price: number | null
   link: string
   expectedDate: string
@@ -65,6 +68,7 @@ export function validatePurchaseRequestForm({
   description,
   justification,
   quantity,
+  quantityFormat,
   price,
   link,
   expectedDate,
@@ -85,6 +89,10 @@ export function validatePurchaseRequestForm({
   ).trim()
 
   const safeQuantity = Number(sanitizeQuantity(quantity))
+
+   const safeQuantityFormat = stripUnsafeText(quantityFormat, MAX_QUANTITY_FORMAT_LENGTH)
+    .trim()
+    .replace(/\s+/g, " ")
 
   const safePrice = price.trim() ? Number(sanitizePrice(price)) : null
 
@@ -137,6 +145,13 @@ export function validatePurchaseRequestForm({
     return {
       ok: false,
       error: `La quantité doit être entre 1 et ${MAX_QUANTITY}.`,
+    }
+  }
+
+   if (safeQuantityFormat.length > MAX_QUANTITY_FORMAT_LENGTH) {
+    return {
+      ok: false,
+      error: `Le format de quantité ne peut pas dépasser ${MAX_QUANTITY_FORMAT_LENGTH} caractères.`,
     }
   }
 
@@ -216,6 +231,7 @@ export function validatePurchaseRequestForm({
       description: safeDescription,
       justification: safeJustification,
       quantity: safeQuantity,
+      quantityFormat: safeQuantityFormat,
       price: safePrice,
       link: safeLink,
       expectedDate: safeExpectedDate,

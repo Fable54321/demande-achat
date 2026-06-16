@@ -6,6 +6,7 @@ export const MAX_DESCRIPTION_LENGTH = 1000
 export const MAX_JUSTIFICATION_LENGTH = 1000
 export const MAX_LINK_LENGTH = 2048
 export const MAX_QUANTITY = 9999
+export const MAX_QUANTITY_FORMAT_LENGTH = 80
 export const MAX_PRICE = 999999.99
 
 export const MAX_IMAGES = 5

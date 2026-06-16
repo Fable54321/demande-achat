@@ -74,6 +74,7 @@ const Form = () => {
   const [link, setLink] = useState("")
   const [expectedDate, setExpectedDate] = useState("")
   const [quantity, setQuantity] = useState("1")
+  const [quantityFormat, setQuantityFormat] = useState("")
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
   const [calendarMonth, setCalendarMonth] = useState(() =>
     getMonthStart(new Date()),
@@ -273,6 +274,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     description,
     justification,
     quantity,
+    quantityFormat,
     price,
     link,
     expectedDate,
@@ -299,6 +301,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     name: values.name,
     price: values.price,
     quantity: values.quantity,
+    quantityFormat: values.quantityFormat,
     email: values.email,
   })
 
@@ -482,23 +485,48 @@ const successMessage = "Votre demande d'achat a bien été envoyée"
     </p>
   )}
 </div>
+<div className="grid gap-5 gap-x-10 tablet:grid-cols-2">
+  <Field
+    icon={Hash}
+    label="Quantité"
+    
+  
+  >
+    <input
+      className={fieldControlClass}
+      type="number"
+      name="quantity"
+      id="quantity"
+      min="1"
+      max={MAX_QUANTITY}
+      step="1"
+      inputMode="numeric"
+      pattern="[0-9]*"
+      placeholder="Ex: 2"
+      value={quantity}
+      onChange={(e) => setQuantity(sanitizeQuantity(e.target.value))}
+    />
+  </Field>
 
-            <Field icon={Hash} label="Quantité">
-              <input
-                className={fieldControlClass}
-                type="number"
-                name="quantity"
-                id="quantity"
-                min="1"
-                max={MAX_QUANTITY}
-                step="1"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                value={quantity}
-                onChange={(e) => setQuantity(sanitizeQuantity(e.target.value))}
-                required
-              />
-            </Field>
+  <Field
+   
+    label="Format"
+    optional
+    helpText="Précisez seulement si utile : boîte, paquet, caisse, rouleau, etc."
+  >
+    <input
+      className={fieldControlClass}
+      type="text"
+      name="quantityFormat"
+      id="quantityFormat"
+      placeholder="Ex: boîte(s), paquet(s)"
+      value={quantityFormat}
+      onChange={(e) =>
+        setQuantityFormat(stripUnsafeText(e.target.value, 80))
+      }
+    />
+  </Field>
+</div>
           </div>
         <input
   type="text"

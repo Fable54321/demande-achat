@@ -7,6 +7,7 @@ type PurchaseRequestFormDataInput = {
   name: string
   price: number | null
   quantity: number
+  quantityFormat: string
   email: string | null
 }
 
