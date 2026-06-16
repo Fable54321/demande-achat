@@ -127,6 +127,11 @@ const refreshFormToken = useCallback(async () => {
   }
 }, [getPurchaseRequestFormToken])
 
+useEffect(() => {
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  refreshFormToken()
+}, [refreshFormToken])
+
   useEffect(() => {
     if (!formTokenExpiresAt) return
 
