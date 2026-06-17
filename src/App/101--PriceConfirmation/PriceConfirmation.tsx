@@ -36,6 +36,12 @@ const formatCurrency = (value: number) =>
 
 const PriceConfirmation = () => {
   const [hasConfirmed, setHasConfirmed] = useState(false)
+  const [directApprovalRequested, setDirectApprovalRequested] = useState(false)
+  const [directApprovalApprover, setDirectApprovalApprover] = useState<
+    "Ricardo" | "Michelle" | null
+  >(null)
+  const [isDirectApprovalSelectorOpen, setIsDirectApprovalSelectorOpen] =
+    useState(false)
   const [submitSuccess, setSubmitSuccess] = useState(false)
 
   const [confirmedUnitPrice, setConfirmedUnitPrice] = useState("")
@@ -77,6 +83,34 @@ const email = useMemo(() => {
 const minExpectedDate = getDateFromToday(0)
 const minExpectedDateObject = parseDateInputValue(minExpectedDate)
 const selectedDateLabel = formatSelectedDate(confirmedDate)
+
+const existingUnitPrice = selectedPurchaseRequest?.requested_unit_price ?? null
+const finalConfirmedUnitPrice =
+  confirmedUnitPrice.trim() === ""
+    ? existingUnitPrice
+    : Number(confirmedUnitPrice)
+const finalConfirmedTotalPrice =
+  finalConfirmedUnitPrice === null || Number.isNaN(finalConfirmedUnitPrice)
+    ? selectedPurchaseRequest?.requested_total_price ?? null
+    : finalConfirmedUnitPrice * (selectedPurchaseRequest?.quantity ?? 1)
+const canRequestDirectApproval =
+  finalConfirmedTotalPrice !== null && finalConfirmedTotalPrice < 200
+
+useEffect(() => {
+  if (!canRequestDirectApproval) {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setDirectApprovalRequested(false)
+    setDirectApprovalApprover(null)
+    setIsDirectApprovalSelectorOpen(false)
+  }
+}, [canRequestDirectApproval])
+
+const selectDirectApprovalApprover = (approver: "Ricardo" | "Michelle") => {
+  setDirectApprovalApprover(approver)
+  setDirectApprovalRequested(true)
+  setHasConfirmed(true)
+  setIsDirectApprovalSelectorOpen(false)
+}
 
 const selectConfirmedDate = (dateValue: string) => {
   if (
@@ -128,19 +162,15 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 
   if (!selectedPurchaseRequest || !id || !token) return
 
-  const existingUnitPrice = selectedPurchaseRequest.requested_unit_price
-
-  const finalConfirmedUnitPrice =
-    confirmedUnitPrice.trim() === ""
-      ? existingUnitPrice
-      : Number(confirmedUnitPrice)
-
 const payload = {
   buyer_user_id: 1, // temporary, or your buyer user id
   buyer_confirmed_unit_price: finalConfirmedUnitPrice,
   buyer_confirmed_supplier: confirmedSupplier.trim() || null,
   expected_date: confirmedDate || null,
   buyer_note: buyerNote.trim() || null,
+  direct_approval_requested:
+    canRequestDirectApproval && directApprovalRequested && !!directApprovalApprover,
+  direct_approval_approver: directApprovalApprover,
 }
 
   const updatedRequest = await validateBuyerPrice(Number(id), token, payload)
@@ -410,6 +440,71 @@ const successMessage = "la confirmation de prix a bien été envoyée"
               demandé.
             </span>
           </label>
+
+          {canRequestDirectApproval && (
+            <div className="flex flex-col gap-3">
+            <label className="group flex cursor-pointer items-start gap-3 rounded-lg border border-secondary/15 bg-white px-4 py-3 text-sm text-slate-700 shadow-sm transition hover:border-secondary/35 hover:bg-primary/10">
+              <input
+                className="filter-checkbox-input"
+                type="checkbox"
+                checked={directApprovalRequested}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    setIsDirectApprovalSelectorOpen(true)
+                    return
+                  }
+
+                  setDirectApprovalRequested(false)
+                  setDirectApprovalApprover(null)
+                  setIsDirectApprovalSelectorOpen(false)
+                }}
+              />
+              <span
+                className={`filter-checkbox-visual ${
+                  directApprovalRequested
+                    ? "filter-checkbox-visual--checked"
+                    : "filter-checkbox-visual--unchecked"
+                }`}
+                aria-hidden="true"
+              >
+                <svg
+                  className="filter-checkbox-check"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                >
+                  <path d="M5 12.5 9.5 17 19 7" />
+                </svg>
+              </span>
+              <span className="leading-6">
+                Cette demande peut être approuvée directement.
+              </span>
+            </label>
+            {directApprovalApprover && (
+              <p className="px-4 text-xs font-bold text-secondary">
+                Approuvée par {directApprovalApprover}
+              </p>
+            )}
+            {isDirectApprovalSelectorOpen && (
+              <div className="rounded-lg border border-secondary/20 bg-tertiary/70 px-4 py-3 shadow-sm">
+                <p className="text-sm font-bold text-slate-700">
+                  Qui approuve directement cette demande?
+                </p>
+                <div className="mt-3 grid gap-2 tablet:grid-cols-2">
+                  {(["Ricardo", "Michelle"] as const).map((approver) => (
+                    <button
+                      key={approver}
+                      type="button"
+                      className="inline-flex h-11 items-center justify-center rounded-lg border border-secondary/25 bg-white px-4 text-sm font-black text-secondary transition hover:bg-secondary hover:text-white focus:outline-none focus:ring-4 focus:ring-primary/30"
+                      onClick={() => selectDirectApprovalApprover(approver)}
+                    >
+                      {approver}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            </div>
+          )}
         </div>
 
         <div className="flex flex-col gap-4 border-t border-secondary/10 bg-slate-50 px-5 py-4 tablet:flex-row tablet:items-center tablet:justify-between tablet:px-8">
@@ -440,7 +535,11 @@ const successMessage = "la confirmation de prix a bien été envoyée"
             className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-secondary px-6 font-black text-white shadow-lg shadow-secondary/20 transition hover:cursor-pointer hover:bg-[#3f610f] focus:outline-none focus:ring-4 focus:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-55"
           >
             <Send size={18} aria-hidden="true" />
-            {loading ?  "Envoi en cours..." : "Confirmer le prix"}
+            {loading
+              ? "Envoi en cours..."
+              : directApprovalRequested
+                ? "Confirmer et approuver"
+                : "Confirmer le prix"}
           </button>
         </div>  
 

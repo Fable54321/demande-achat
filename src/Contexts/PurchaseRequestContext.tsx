@@ -97,6 +97,8 @@ export interface BuyerValidationPayload {
   buyer_confirmed_supplier?: string | null
   expected_date?: string | null
   buyer_note?: string | null
+  direct_approval_requested?: boolean
+  direct_approval_approver?: "Ricardo" | "Michelle" | null
   needs_requester_info?: boolean
   reject?: boolean
   rejection_reason?: string | null
