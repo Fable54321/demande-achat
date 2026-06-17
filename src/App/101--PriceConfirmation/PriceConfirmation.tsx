@@ -10,7 +10,7 @@ import {
   User,
   X,
 } from "lucide-react"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, useRef } from "react"
 import { useParams } from "react-router-dom"
 import { usePurchaseRequests } from "../../Contexts/PurchaseRequestContext"
 import DatePicker from "../100-Form/DatePicker"
@@ -91,7 +91,37 @@ const selectConfirmedDate = (dateValue: string) => {
   setIsDatePickerOpen(false)
 }
 
-  
+ ///DatePicker ref + handle click outside
+const datePickerRef = useRef<HTMLDivElement>(null); 
+
+
+useEffect(() =>  {
+
+  if(!isDatePickerOpen) return
+
+ const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+  const target = event.target as Node
+
+
+  if(
+    datePickerRef.current &&
+    !datePickerRef.current.contains(target)
+  ) {
+    setIsDatePickerOpen(false)
+  }
+}
+
+  document.addEventListener("mousedown", handleClickOutside)
+  document.addEventListener("touchstart", handleClickOutside)
+
+  return () => {
+    document.removeEventListener("mousedown", handleClickOutside)
+    document.removeEventListener("touchstart", handleClickOutside)
+  }
+
+ 
+},[isDatePickerOpen]);
+
 
 const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
   e.preventDefault()
@@ -105,13 +135,13 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
       ? existingUnitPrice
       : Number(confirmedUnitPrice)
 
-  const payload = {
-    buyer_user_id: 1, // temporary, or your buyer user id
-    buyer_confirmed_unit_price: finalConfirmedUnitPrice,
-    buyer_confirmed_supplier: confirmedSupplier.trim() || null,
-    expected_date: confirmedDate || undefined,
-    buyer_note: buyerNote.trim() || null,
-  }
+const payload = {
+  buyer_user_id: 1, // temporary, or your buyer user id
+  buyer_confirmed_unit_price: finalConfirmedUnitPrice,
+  buyer_confirmed_supplier: confirmedSupplier.trim() || null,
+  expected_date: confirmedDate || null,
+  buyer_note: buyerNote.trim() || null,
+}
 
   const updatedRequest = await validateBuyerPrice(Number(id), token, payload)
 
@@ -286,7 +316,7 @@ const successMessage = "la confirmation de prix a bien été envoyée"
   </label>
 </div>
 
-<div className="flex flex-col gap-2 text-sm font-bold text-slate-700">
+<div className="flex flex-col gap-2 text-sm font-bold text-slate-700" ref={datePickerRef}>
   <span>Changement de la date</span>
   <div className="flex flex-col gap-2 tablet:flex-row tablet:items-center">
     <input type="hidden" name="confirmedDate" value={confirmedDate} />

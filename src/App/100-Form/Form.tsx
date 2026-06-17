@@ -11,7 +11,7 @@ import {
   User,
   X,
 } from "lucide-react"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState, useRef } from "react"
 import { usePurchaseRequests, type Employee } from "../../Contexts/PurchaseRequestContext"
 import { getUrgencyFromExpectedDate } from "./getUrgencyFromExpectedDate"
 import { getMonthStart} from "./Utils/getMonthStartandDays"
@@ -160,7 +160,35 @@ useEffect(() => {
     { label: "1 mois", value: getDateFromToday(30) },
   ]
 
-  
+  //// CLOSING DATEPICKER ON CLICK OUTSIDE  
+
+  const datePickerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if(!isDatePickerOpen) return;
+
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+
+      const target = event.target as Node
+
+      if(datePickerRef.current &&
+        !datePickerRef.current.contains(target)
+      ){
+        setIsDatePickerOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside)
+    }
+
+    
+
+  },[isDatePickerOpen])
 
   const urgency = getUrgencyFromExpectedDate(expectedDate)
   const selectExpectedDate = (dateValue: string) => {
@@ -712,8 +740,8 @@ const successMessage = "Votre demande d'achat a bien été envoyée"
                     name="expectedDate"
                     value={expectedDate}
                   />
-
-                  <div className="relative tablet:flex-1">
+{/* DATEPICKER */}
+                  <div className="relative tablet:flex-1" ref={datePickerRef}>
                     <button
                       type="button"
                       id="expectedDate"
