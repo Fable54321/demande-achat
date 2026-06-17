@@ -271,7 +271,9 @@ onChange={() => {
     setWaitReason(event.target.value)
     setSubmitError(null)
   }}
-  className="bg-white border border-gray-300 rounded-lg resize-none w-full h-full"
+  className="bg-white border border-gray-300 rounded-lg resize-none w-full h-full focus:outline-gray-300 px-2 py-0.5"
+  placeholder="Raison de la mise en attente"
+  disabled={adminDecision !== "on_wait"}
 />
         
      
