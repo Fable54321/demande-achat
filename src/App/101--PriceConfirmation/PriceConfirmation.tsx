@@ -1,4 +1,5 @@
 import {
+  AlertCircle,
   Calendar,
   CheckCircle2,
   DollarSign,
@@ -61,10 +62,20 @@ const [isOverlayOpen, setIsOverlayOpen] = useState(false);
   token: string
 }>()
 
-  const { fetchPurchaseRequestById, selectedPurchaseRequest, validateBuyerPrice, loading } = usePurchaseRequests();
+  const {
+    error,
+    fetchPurchaseRequestByToken,
+    selectedPurchaseRequest,
+    validateBuyerPrice,
+    loading,
+  } = usePurchaseRequests();
 
 // eslint-disable-next-line react-hooks/exhaustive-deps
-useEffect(() => {fetchPurchaseRequestById(Number(id));}, [id]);
+useEffect(() => {
+  if (!id || !token) return
+
+  fetchPurchaseRequestByToken(Number(id), token, "validation-prix")
+}, [fetchPurchaseRequestByToken, id, token]);
 
 useEffect(()=> {console.log(selectedPurchaseRequest)}, [selectedPurchaseRequest]);
 
@@ -242,6 +253,13 @@ const successMessage = "la confirmation de prix a bien été envoyée"
             <div className="flex items-start gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
               <CheckCircle2 className="mt-0.5 shrink-0" size={18} />
               <span>Le prix demandé a ete confirmé.</span>
+            </div>
+          )}
+
+          {error && !selectedPurchaseRequest && (
+            <div className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+              <AlertCircle className="mt-0.5 shrink-0" size={18} />
+              <span>{error}</span>
             </div>
           )}
 

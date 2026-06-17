@@ -47,18 +47,18 @@ const BuyingProcess = () => {
   const { id, token } = useParams<{ id: string; token: string }>()
 
   const {
-    fetchPurchaseRequestById,
+    error,
+    fetchPurchaseRequestByToken,
     selectedPurchaseRequest,
     markPurchaseRequestAsPurchased,
     loading,
   } = usePurchaseRequests()
 
   useEffect(() => {
-    if (!id) return
+    if (!id || !token) return
 
-    fetchPurchaseRequestById(Number(id))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id])
+    fetchPurchaseRequestByToken(Number(id), token, "acheter")
+  }, [fetchPurchaseRequestByToken, id, token])
 
   const suggestedFinalUnitPrice =
     selectedPurchaseRequest?.final_unit_price ??
@@ -241,6 +241,13 @@ const BuyingProcess = () => {
             <div className="flex items-start gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-base text-green-800">
               <CheckCircle2 className="mt-0.5 shrink-0" size={18} />
               <span>L'achat a ete confirme avec succes.</span>
+            </div>
+          )}
+
+          {error && !selectedPurchaseRequest && (
+            <div className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-base text-red-800">
+              <AlertCircle className="mt-0.5 shrink-0" size={18} />
+              <span>{error}</span>
             </div>
           )}
 

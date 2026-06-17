@@ -33,7 +33,13 @@ const AdminApproval = () => {
   token: string
 }>()
 
-  const { selectedPurchaseRequest, saveAdminDecision, fetchPurchaseRequestById, loading } = usePurchaseRequests();
+  const {
+    error,
+    selectedPurchaseRequest,
+    saveAdminDecision,
+    fetchPurchaseRequestByToken,
+    loading,
+  } = usePurchaseRequests();
 const [adminDecision, setAdminDecision] = useState<AdminDecision>(null)
 const [refuseReason, setRefuseReason] = useState("")
 const [waitReason, setWaitReason] = useState("")
@@ -41,9 +47,10 @@ const [waitReason, setWaitReason] = useState("")
   const email = selectedPurchaseRequest?.request_email ?? null
 
 useEffect(() => {
-    fetchPurchaseRequestById(Number(id));
-// eslint-disable-next-line react-hooks/exhaustive-deps
-},[id]);
+  if (!id || !token) return
+
+  fetchPurchaseRequestByToken(Number(id), token, "approbation-achat")
+},[fetchPurchaseRequestByToken, id, token]);
   
 
 const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -140,6 +147,13 @@ const successMessage = "la décision a bien été envoyée";
             <div className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
               <AlertCircle className="mt-0.5 shrink-0" size={18} />
               <span>{submitError}</span>
+            </div>
+          )}
+
+          {error && !selectedPurchaseRequest && (
+            <div className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+              <AlertCircle className="mt-0.5 shrink-0" size={18} />
+              <span>{error}</span>
             </div>
           )}
 

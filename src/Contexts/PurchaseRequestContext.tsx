@@ -127,6 +127,14 @@ interface EmployeeListResponse {
   users: Employee[]
 }
 
+type TokenedPurchaseRequestReadRoute =
+  | "buyer-validation"
+  | "validation-prix"
+  | "admin-decision"
+  | "approbation-achat"
+  | "mark-purchased"
+  | "acheter"
+
 export interface MarkPurchasedPayload {
   purchased_by_user_id: number
   final_unit_price?: number | null
@@ -143,6 +151,11 @@ interface PurchaseRequestsContextType {
 
   fetchPurchaseRequests: (status?: PurchaseRequestStatus) => Promise<void>
   fetchPurchaseRequestById: (id: number) => Promise<PurchaseRequest | null>
+  fetchPurchaseRequestByToken: (
+    id: number,
+    token: string,
+    route: TokenedPurchaseRequestReadRoute
+  ) => Promise<PurchaseRequest | null>
 getPurchaseRequestFormToken: () => Promise<PurchaseRequestFormTokenResponse | null>
 createPurchaseRequest: (
   formData: FormData,
@@ -263,6 +276,36 @@ export const PurchaseRequestsProvider = ({
       setLoading(false)
     }
   }, [])
+
+  const fetchPurchaseRequestByToken = useCallback(
+    async (id: number, token: string, route: TokenedPurchaseRequestReadRoute) => {
+      try {
+        setLoading(true)
+        setError(null)
+        setSelectedPurchaseRequest(null)
+
+        const data = await request<PurchaseRequest>(
+          `/purchase-request/${id}/${route}/${encodeURIComponent(token)}`
+        )
+
+        setSelectedPurchaseRequest(data)
+
+        return data
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Lien invalide, expiré ou déjà utilisé"
+
+        setSelectedPurchaseRequest(null)
+        setError(message)
+        return null
+      } finally {
+        setLoading(false)
+      }
+    },
+    []
+  )
 
 
 useEffect(() => {
@@ -520,6 +563,7 @@ const markPurchaseRequestAsPurchased = useCallback(
   error,
   fetchPurchaseRequests,
   fetchPurchaseRequestById,
+  fetchPurchaseRequestByToken,
   getPurchaseRequestFormToken,
   createPurchaseRequest,
   validateBuyerPrice,
