@@ -20,6 +20,7 @@ export const buildPurchaseRequestFormData = ({
   name,
   price,
   quantity,
+  quantityFormat,
   email,
 }: PurchaseRequestFormDataInput) => {
   const formData = new FormData()
@@ -27,7 +28,13 @@ export const buildPurchaseRequestFormData = ({
   formData.append("requested_by", name)
   formData.append("description", description)
   formData.append("quantity", String(quantity))
+
   formData.append("reason", justification || "")
+
+  if (quantityFormat) {
+    formData.append("quantity_format", quantityFormat)
+  }
+
 
   if (price !== null) {
     formData.append("requested_unit_price", String(price))

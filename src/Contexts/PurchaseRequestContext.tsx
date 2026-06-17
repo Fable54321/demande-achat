@@ -32,6 +32,7 @@ requested_at: string
 
 description: string
 quantity: number
+quantity_format: string
 reason: string | null
 
   urgency: "normal" | "priority" | "urgent" | string | null

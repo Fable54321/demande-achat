@@ -275,6 +275,7 @@ const resetForm = () => {
   setExpectedDate("")
   setImages([])
   setQuantity("1")
+  setQuantityFormat("");
 }
 
 const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
