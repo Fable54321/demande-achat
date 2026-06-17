@@ -5,16 +5,16 @@ type DatePickerProps = {
   setCalendarMonth: (date: Date) => void
   calendarMonth: Date
   monthFormatter: Intl.DateTimeFormat
-  expectedDate: string
-  minExpectedDateObject: Date
-  selectExpectedDate: (dateValue: string) => void
+  selectedDate: string
+  minDate: Date
+  selectDate: (dateValue: string) => void
   toDateInputValue: (date: Date) => string
 }
 
 
 
 
-const DatePicker = (  { setCalendarMonth, calendarMonth, monthFormatter, expectedDate, minExpectedDateObject, selectExpectedDate, toDateInputValue }: DatePickerProps) => {
+const DatePicker = (  { setCalendarMonth, calendarMonth, monthFormatter, selectedDate, minDate, selectDate, toDateInputValue }: DatePickerProps) => {
 
 
 
@@ -26,7 +26,7 @@ const DatePicker = (  { setCalendarMonth, calendarMonth, monthFormatter, expecte
   const nextCalendarMonth = new Date(calendarMonth)
   nextCalendarMonth.setMonth(nextCalendarMonth.getMonth() + 1)
   const canGoToPreviousMonth =
-    previousCalendarMonth >= getMonthStart(minExpectedDateObject)
+    previousCalendarMonth >= getMonthStart(minDate)
 
 
     const weekdayLabels = ["dim.", "lun.", "mar.", "mer.", "jeu.", "ven.", "sam."]
@@ -75,8 +75,8 @@ const DatePicker = (  { setCalendarMonth, calendarMonth, monthFormatter, expecte
                             const dateValue = toDateInputValue(date)
                             const isCurrentMonth =
                               date.getMonth() === calendarMonth.getMonth()
-                            const isSelected = expectedDate === dateValue
-                            const isDisabled = date < minExpectedDateObject
+                            const isSelected = selectedDate === dateValue
+                            const isDisabled = date < minDate
 
                             return (
                               <button
@@ -89,7 +89,7 @@ const DatePicker = (  { setCalendarMonth, calendarMonth, monthFormatter, expecte
                                 } ${
                                   isCurrentMonth ? "" : "text-slate-300"
                                 } disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-transparent`}
-                                onClick={() => selectExpectedDate(dateValue)}
+                                onClick={() => selectDate(dateValue)}
                                 disabled={isDisabled}
                                 aria-pressed={isSelected}
                               >

@@ -83,6 +83,13 @@ const email = useMemo(() => {
 const minExpectedDate = getDateFromToday(0)
 const minExpectedDateObject = parseDateInputValue(minExpectedDate)
 const selectedDateLabel = formatSelectedDate(confirmedDate)
+const neededByDate =
+  (
+    selectedPurchaseRequest as
+      | (typeof selectedPurchaseRequest & { needed_by_date?: string | null })
+      | null
+  )?.needed_by_date?.slice(0, 10) ?? null
+const neededByDateLabel = neededByDate ? formatSelectedDate(neededByDate) : null
 
 const existingUnitPrice = selectedPurchaseRequest?.requested_unit_price ?? null
 const finalConfirmedUnitPrice =
@@ -282,7 +289,7 @@ const successMessage = "la confirmation de prix a bien été envoyée"
               <div className="rounded-lg border border-secondary/15 bg-white px-3 py-2 shadow-sm">
                 <dt className="font-bold text-secondary">Quantité</dt>
                 <dd className="mt-1 text-slate-700">
-                  {selectedPurchaseRequest?.quantity && selectedPurchaseRequest.quantity + selectedPurchaseRequest.quantity_format}
+                  {selectedPurchaseRequest?.quantity && selectedPurchaseRequest.quantity} {" " +selectedPurchaseRequest.quantity_format && selectedPurchaseRequest.quantity_format}
                 </dd>
               </div>
               <div className="rounded-lg border border-secondary/15 bg-white px-3 py-2 shadow-sm">
@@ -295,7 +302,7 @@ const successMessage = "la confirmation de prix a bien été envoyée"
                 </dd>
               </div>
               <div className="rounded-lg border border-secondary/15 bg-white px-3 py-2 shadow-sm">
-                <dt className="font-bold text-secondary">Total demandé</dt>
+                <dt className="font-bold text-secondary">Total</dt>
                 <dd className="mt-1 text-slate-700">
                   {selectedPurchaseRequest?.requested_total_price &&   formatCurrency(selectedPurchaseRequest.requested_total_price)}
                 </dd>
@@ -348,6 +355,12 @@ const successMessage = "la confirmation de prix a bien été envoyée"
 
 <div className="flex flex-col gap-2 text-sm font-bold text-slate-700" ref={datePickerRef}>
   <span>Changement de la date</span>
+  {neededByDateLabel && (
+    <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+      <span className="font-black">Date demandée initialement : </span>
+      <span>{neededByDateLabel}</span>
+    </div>
+  )}
   <div className="flex flex-col gap-2 tablet:flex-row tablet:items-center">
     <input type="hidden" name="confirmedDate" value={confirmedDate} />
 
@@ -370,9 +383,9 @@ const successMessage = "la confirmation de prix a bien été envoyée"
           setCalendarMonth={setCalendarMonth}
           calendarMonth={calendarMonth}
           monthFormatter={monthFormatter}
-          expectedDate={confirmedDate}
-          minExpectedDateObject={minExpectedDateObject}
-          selectExpectedDate={selectConfirmedDate}
+          selectedDate={confirmedDate}
+          minDate={minExpectedDateObject}
+          selectDate={selectConfirmedDate}
           toDateInputValue={toDateInputValue}
         />
       )}

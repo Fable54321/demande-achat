@@ -1,6 +1,6 @@
 type PurchaseRequestFormDataInput = {
   description: string
-  expectedDate: string
+  neededByDate: string
   images: File[]
   justification: string
   link: string
@@ -13,7 +13,7 @@ type PurchaseRequestFormDataInput = {
 
 export const buildPurchaseRequestFormData = ({
   description,
-  expectedDate,
+  neededByDate,
   images,
   justification,
   link,
@@ -44,8 +44,8 @@ export const buildPurchaseRequestFormData = ({
     formData.append("product_link", link)
   }
 
-  if (expectedDate) {
-    formData.append("expected_date", expectedDate)
+  if (neededByDate) {
+    formData.append("needed_by_date", neededByDate)
   }
 
   if (email) {

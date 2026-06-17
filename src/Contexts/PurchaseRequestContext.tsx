@@ -36,7 +36,7 @@ quantity_format: string
 reason: string | null
 
   urgency: "normal" | "priority" | "urgent" | string | null
-  expected_date: string | null
+  needed_by_date: string | null
 
   requested_unit_price: number | null
   requested_total_price: number | null
@@ -84,11 +84,12 @@ export interface CreatePurchaseRequestPayload {
   requested_by: string
   description: string
   quantity?: number
+  quantity_format?: string | null
   reason?: string | null
   requested_unit_price?: number | null
   requested_supplier?: string | null
   product_link?: string | null
-  expected_date?: string | null
+  needed_by_date?: string | null
   email?: string | null
 }
 

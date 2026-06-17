@@ -72,7 +72,7 @@ const Form = () => {
   const [justification, setJustification] = useState("")
   const [price, setPrice] = useState("")
   const [link, setLink] = useState("")
-  const [expectedDate, setExpectedDate] = useState("")
+  const [neededByDate, setNeededByDate] = useState("")
   const [quantity, setQuantity] = useState("1")
   const [quantityFormat, setQuantityFormat] = useState("")
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
@@ -149,9 +149,9 @@ useEffect(() => {
 
 
 
-  const minExpectedDate = getDateFromToday(0)
-  const minExpectedDateObject = parseDateInputValue(minExpectedDate)
-  const selectedDateLabel = formatSelectedDate(expectedDate)
+  const minNeededByDate = getDateFromToday(0)
+  const minNeededByDateObject = parseDateInputValue(minNeededByDate)
+  const selectedDateLabel = formatSelectedDate(neededByDate)
 
   const quickDateOptions = [
     { label: "Demain", value: getDateFromToday(1) },
@@ -190,16 +190,16 @@ useEffect(() => {
 
   },[isDatePickerOpen])
 
-  const urgency = getUrgencyFromExpectedDate(expectedDate)
-  const selectExpectedDate = (dateValue: string) => {
+  const urgency = getUrgencyFromExpectedDate(neededByDate)
+  const selectNeededByDate = (dateValue: string) => {
     if (
       !isValidIsoDate(dateValue) ||
-      parseDateInputValue(dateValue) < minExpectedDateObject
+      parseDateInputValue(dateValue) < minNeededByDateObject
     ) {
       return
     }
 
-    setExpectedDate(dateValue)
+    setNeededByDate(dateValue)
     setCalendarMonth(getMonthStart(parseDateInputValue(dateValue)))
     setIsDatePickerOpen(false)
   }
@@ -272,7 +272,7 @@ const resetForm = () => {
   setEmail("")
   setPrice("")
   setLink("")
-  setExpectedDate("")
+  setNeededByDate("")
   setImages([])
   setQuantity("1")
   setQuantityFormat("");
@@ -306,10 +306,10 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     quantityFormat,
     price,
     link,
-    expectedDate,
+    neededByDate,
     email,
     images,
-    minExpectedDateObject,
+    minNeededByDateObject,
   })
 
   if (!validation.ok) {
@@ -323,7 +323,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 
   const formData = buildPurchaseRequestFormData({
     description: values.description,
-    expectedDate: values.expectedDate,
+    neededByDate: values.neededByDate,
     images,
     justification: values.justification,
     link: values.link,
@@ -546,7 +546,7 @@ const successMessage = "Votre demande d'achat a bien été envoyée"
     <input
       className={fieldControlClass}
       type="text"
-      name="quantityFormat"
+      name="quantity_format"
       id="quantityFormat"
       placeholder="Ex: boîte(s), paquet(s)"
       value={quantityFormat}
@@ -723,12 +723,12 @@ const successMessage = "Votre demande d'achat a bien été envoyée"
                       type="button"
                       key={option.label}
                       className={`h-10 rounded-lg border px-3 text-sm font-bold transition ${
-                        expectedDate === option.value
+                        neededByDate === option.value
                           ? "border-secondary bg-secondary text-white shadow-md shadow-secondary/20 "
                           : "border-secondary/20 bg-white text-secondary hover:border-secondary/45 hover:bg-primary/10 hover:cursor-pointer"
                       }`}
-                      onClick={() => selectExpectedDate(option.value)}
-                      aria-pressed={expectedDate === option.value}
+                      onClick={() => selectNeededByDate(option.value)}
+                      aria-pressed={neededByDate === option.value}
                     >
                       {option.label}
                     </button>
@@ -738,14 +738,14 @@ const successMessage = "Votre demande d'achat a bien été envoyée"
                 <div className="flex flex-col gap-2 tablet:flex-row tablet:items-center">
                   <input
                     type="hidden"
-                    name="expectedDate"
-                    value={expectedDate}
+                    name="needed_by_date"
+                    value={neededByDate}
                   />
 {/* DATEPICKER */}
                   <div className="relative tablet:flex-1" ref={datePickerRef}>
                     <button
                       type="button"
-                      id="expectedDate"
+                      id="neededByDate"
                       className={`${fieldControlClass} flex min-h-12 items-center justify-between gap-3 text-left`}
                       onClick={() => setIsDatePickerOpen((isOpen) => !isOpen)}
                       aria-expanded={isDatePickerOpen}
@@ -770,20 +770,20 @@ const successMessage = "Votre demande d'achat a bien été envoyée"
                       setCalendarMonth={setCalendarMonth}
                       calendarMonth={calendarMonth}
                       monthFormatter={monthFormatter}
-                      expectedDate={expectedDate}
-                      minExpectedDateObject={minExpectedDateObject}
-                      selectExpectedDate={selectExpectedDate}
+                      selectedDate={neededByDate}
+                      minDate={minNeededByDateObject}
+                      selectDate={selectNeededByDate}
                       toDateInputValue={toDateInputValue}
                       />
                     )}
                   </div>
 
-                  {expectedDate && (
+                  {neededByDate && (
                     <button
                       type="button"
                       className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-secondary/25 bg-white px-4 text-sm font-bold text-secondary transition hover:bg-secondary hover:text-white"
                       onClick={() => {
-                        setExpectedDate("")
+                        setNeededByDate("")
                         setIsDatePickerOpen(false)
                       }}
                       aria-label="Effacer la date sélectionnée"

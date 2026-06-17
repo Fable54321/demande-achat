@@ -35,10 +35,10 @@ type ValidatePurchaseRequestFormParams = {
   quantityFormat: string
   price: string
   link: string
-  expectedDate: string
+  neededByDate: string
   email: string
   images: File[]
-  minExpectedDateObject: Date
+  minNeededByDateObject: Date
 }
 
 type ValidatedPurchaseRequestFormValues = {
@@ -49,7 +49,7 @@ type ValidatedPurchaseRequestFormValues = {
   quantityFormat: string
   price: number | null
   link: string
-  expectedDate: string
+  neededByDate: string
   email: string | null
 }
 
@@ -71,10 +71,10 @@ export function validatePurchaseRequestForm({
   quantityFormat,
   price,
   link,
-  expectedDate,
+  neededByDate,
   email,
   images,
-  minExpectedDateObject,
+  minNeededByDateObject,
 }: ValidatePurchaseRequestFormParams): ValidationResult {
   const safeName = sanitizeName(name).trim().replace(/\s+/g, " ")
 
@@ -98,7 +98,7 @@ export function validatePurchaseRequestForm({
 
   const safeLink = sanitizeUrl(link).trim()
 
-  const safeExpectedDate = expectedDate.trim()
+  const safeNeededByDate = neededByDate.trim()
 
   const safeEmail = email.trim() ? email.trim().toLowerCase() : null
 
@@ -184,9 +184,9 @@ export function validatePurchaseRequestForm({
   }
 
   if (
-    safeExpectedDate &&
-    (!isValidIsoDate(safeExpectedDate) ||
-      parseDateInputValue(safeExpectedDate) < minExpectedDateObject)
+    safeNeededByDate &&
+    (!isValidIsoDate(safeNeededByDate) ||
+      parseDateInputValue(safeNeededByDate) < minNeededByDateObject)
   ) {
     return {
       ok: false,
@@ -234,7 +234,7 @@ export function validatePurchaseRequestForm({
       quantityFormat: safeQuantityFormat,
       price: safePrice,
       link: safeLink,
-      expectedDate: safeExpectedDate,
+      neededByDate: safeNeededByDate,
       email: safeEmail,
     },
   }
