@@ -15,7 +15,7 @@ import { useEffect, useState } from "react"
 import SendEmailOverlay from "../SendEmailOverlay"
 import SuccesOverlay from "../SuccesOverlay"
 
-
+type AdminDecision = "approved" | "rejected" | "on_wait" | null
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("fr-CA", {
@@ -34,8 +34,9 @@ const AdminApproval = () => {
 }>()
 
   const { selectedPurchaseRequest, saveAdminDecision, fetchPurchaseRequestById, loading } = usePurchaseRequests();
-  const [isApproved, setIsApproved] = useState<boolean | null>(null);
-  const [refuseReason, setRefuseReason] = useState("")
+const [adminDecision, setAdminDecision] = useState<AdminDecision>(null)
+const [refuseReason, setRefuseReason] = useState("")
+const [waitReason, setWaitReason] = useState("")
   const note = "";
   const email = selectedPurchaseRequest?.request_email ?? null
 
@@ -50,33 +51,41 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
   setSubmitError(null)
   setSubmitSuccess(false)
 
-  if (!selectedPurchaseRequest || !id || !token || isApproved === null) return
+  if (!selectedPurchaseRequest || !id || !token || !adminDecision) {
+    setSubmitError("Veuillez choisir une décision.")
+    return
+  }
 
-  if (!isApproved && !refuseReason.trim()) {
+  if (adminDecision === "rejected" && !refuseReason.trim()) {
     setSubmitError("La raison du refus est requise.")
     return
   }
 
+  if (adminDecision === "on_wait" && !waitReason.trim()) {
+    setSubmitError("La raison de la mise en attente est requise.")
+    return
+  }
+
   const payload = {
-    approved: isApproved,
-    admin_note: note,
-    rejection_reason: isApproved ? null : refuseReason.trim(),
+    decision: adminDecision,
+    admin_note:
+      adminDecision === "on_wait"
+        ? waitReason.trim()
+        : note.trim() || null,
+    rejection_reason:
+      adminDecision === "rejected" ? refuseReason.trim() : null,
   }
 
   const updatedRequest = await saveAdminDecision(Number(id), token, payload)
 
   if (updatedRequest) {
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    })
+    window.scrollTo({ top: 0, behavior: "smooth" })
     setSubmitSuccess(true)
 
     setTimeout(() => {
       setSubmitSuccess(false)
       window.location.replace("https://vegibec-portail.com/")
     }, 4000)
-
   }
 }
 
@@ -202,7 +211,7 @@ const successMessage = "la décision a bien été envoyée";
   <div className="grid gap-3 tablet:grid-cols-2">
     <label
       className={`flex cursor-pointer items-start gap-3 rounded-lg border px-4 py-3 shadow-sm transition ${
-        isApproved === true
+        adminDecision === "approved"
           ? "border-green-500 bg-green-50 text-green-900"
           : "border-secondary/15 bg-white text-slate-700 hover:border-green-400 hover:bg-green-50"
       }`}
@@ -211,11 +220,11 @@ const successMessage = "la décision a bien été envoyée";
         type="radio"
         name="adminDecision"
         value="approved"
-        checked={isApproved === true}
-        onChange={() => {
-          setIsApproved(true)
-          setSubmitError(null)
-        }}
+     checked={adminDecision === "approved"}
+onChange={() => {
+  setAdminDecision("approved")
+  setSubmitError(null)
+}}
         className="mt-1 h-4 w-4 accent-green-700"
         required
       />
@@ -228,9 +237,50 @@ const successMessage = "la décision a bien été envoyée";
       </span>
     </label>
 
+   <div   className={`flex flex-col gap-2  items-start row-span-2 rounded-lg border px-4 py-3  shadow-sm transition ${
+        adminDecision === "on_wait"
+          ? "border-orange-400 bg-orange-50"
+          : "border-secondary/15 bg-white text-slate-700 hover:border-orange-400 hover:bg-orange-50"
+      }`}>
+    <label
+    className="flex gap-3 cursor-pointer"
+    >
+      <input
+        type="radio"
+        name="adminDecision"
+        value="onWait"
+      checked={adminDecision === "on_wait"}
+onChange={() => {
+  setAdminDecision("on_wait")
+  setSubmitError(null)
+}}
+        className="mt-1 h-4 w-4 accent-orange-700"
+        required
+      />
+
+      <span className="flex flex-col gap-1">
+        <span className="font-black">Mise en attente / autre</span>
+        
+      </span>
+    </label>
+    <label className="w-full h-full">
+      <span className="hidden">Raison de la mise en attente</span>
+  <textarea
+  value={waitReason}
+  onChange={(event) => {
+    setWaitReason(event.target.value)
+    setSubmitError(null)
+  }}
+  className="bg-white border border-gray-300 rounded-lg resize-none w-full h-full"
+/>
+        
+     
+    </label>
+</div>  
+
     <label
       className={`flex cursor-pointer items-start gap-3 rounded-lg border px-4 py-3 shadow-sm transition ${
-        isApproved === false
+        adminDecision === "rejected"
           ? "border-red-500 bg-red-50 text-red-900"
           : "border-secondary/15 bg-white text-slate-700 hover:border-red-400 hover:bg-red-50"
       }`}
@@ -239,11 +289,11 @@ const successMessage = "la décision a bien été envoyée";
         type="radio"
         name="adminDecision"
         value="rejected"
-        checked={isApproved === false}
-        onChange={() => {
-          setIsApproved(false)
-          setSubmitError(null)
-        }}
+       checked={adminDecision === "rejected"}
+onChange={() => {
+  setAdminDecision("rejected")
+  setSubmitError(null)
+}}
         className="mt-1 h-4 w-4 accent-red-700"
         required
       />
@@ -257,7 +307,7 @@ const successMessage = "la décision a bien été envoyée";
     </label>
   </div>
 
-  {isApproved === false && (
+  {adminDecision === "rejected" && (
     <label className="flex flex-col gap-2  font-bold text-slate-700">
       Raison du refus
       <textarea

@@ -103,7 +103,7 @@ export interface BuyerValidationPayload {
 }
 
 export interface AdminDecisionPayload {
-  approved: boolean
+  decision: "approved" | "on_wait" | "rejected"
   admin_note?: string | null
   rejection_reason?: string | null
 }
