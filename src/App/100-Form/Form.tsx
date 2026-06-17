@@ -8,6 +8,7 @@ import {
   PackageCheck,
   Send,
   ShoppingBag,
+  SquareStack,
   User,
   X,
 } from "lucide-react"
@@ -34,6 +35,7 @@ import {
   MAX_IMAGE_SIZE_MB,
   MAX_JUSTIFICATION_LENGTH,
   MAX_LINK_LENGTH,
+  MAX_PURCHASE_ITEMS,
   MAX_NAME_LENGTH,
   MAX_PRICE,
   MAX_QUANTITY,
@@ -57,7 +59,13 @@ const Form = () => {
   
 
 
-  const { getPurchaseRequestFormToken, createPurchaseRequest, loading, employees } =
+  const {
+    getPurchaseRequestFormToken,
+    createPurchaseRequest,
+    createPurchaseRequestBatch,
+    loading,
+    employees,
+  } =
   usePurchaseRequests()
 
   const [formToken, setFormToken] = useState<string | null>(null)
@@ -68,13 +76,21 @@ const Form = () => {
   const [name, setName] = useState("")
   const [submittedByName, setSubmittedByName] = useState("")
   const [email, setEmail] = useState("")
-  const [description, setDescription] = useState("")
-  const [justification, setJustification] = useState("")
-  const [price, setPrice] = useState("")
-  const [link, setLink] = useState("")
-  const [neededByDate, setNeededByDate] = useState("")
-  const [quantity, setQuantity] = useState("1")
-  const [quantityFormat, setQuantityFormat] = useState("")
+  const createEmptyItem = () => ({
+    description: "",
+    images: [] as File[],
+    justification: "",
+    link: "",
+    neededByDate: "",
+    price: "",
+    quantity: "1",
+    quantityFormat: "",
+  })
+
+  const [hasMultipleItems, setHasMultipleItems] = useState(false)
+  const [purchaseItemCount, setPurchaseItemCount] = useState("1")
+  const [currentItemIndex, setCurrentItemIndex] = useState(0)
+  const [purchaseItems, setPurchaseItems] = useState([createEmptyItem()])
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
   const [calendarMonth, setCalendarMonth] = useState(() =>
     getMonthStart(new Date()),
@@ -82,8 +98,46 @@ const Form = () => {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [submitSuccess, setSubmitSuccess] = useState(false)
   const [companyWebsite, setCompanyWebsite] = useState("")
-  const [images, setImages] = useState<File[]>([])
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
+
+  const requestedItemCount = Number(purchaseItemCount) || 1
+  const itemCount = hasMultipleItems ? requestedItemCount : 1
+  const currentItem = purchaseItems[currentItemIndex] ?? createEmptyItem()
+  const description = currentItem.description
+  const justification = currentItem.justification
+  const price = currentItem.price
+  const link = currentItem.link
+  const neededByDate = currentItem.neededByDate
+  const quantity = currentItem.quantity
+  const quantityFormat = currentItem.quantityFormat
+  const images = currentItem.images
+
+  const updateCurrentItem = (
+    updates: Partial<ReturnType<typeof createEmptyItem>>,
+  ) => {
+    setPurchaseItems((currentItems) =>
+      currentItems.map((item, index) =>
+        index === currentItemIndex ? { ...item, ...updates } : item,
+      ),
+    )
+  }
+
+  const resizePurchaseItems = (nextCount: number) => {
+    const safeCount = Math.min(Math.max(nextCount, 1), MAX_PURCHASE_ITEMS)
+
+    setPurchaseItems((currentItems) => {
+      const nextItems = currentItems.slice(0, safeCount)
+
+      while (nextItems.length < safeCount) {
+        nextItems.push(createEmptyItem())
+      }
+
+      return nextItems
+    })
+
+    setCurrentItemIndex((index) => Math.min(index, safeCount - 1))
+    setIsDatePickerOpen(false)
+  }
 
 
   const officeWorkers = useMemo(
@@ -199,7 +253,7 @@ useEffect(() => {
       return
     }
 
-    setNeededByDate(dateValue)
+    updateCurrentItem({ neededByDate: dateValue })
     setCalendarMonth(getMonthStart(parseDateInputValue(dateValue)))
     setIsDatePickerOpen(false)
   }
@@ -230,22 +284,20 @@ const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     )
   }
 
-  setImages((currentImages) => {
-    const combinedImages = [
-      ...currentImages,
+  updateCurrentItem({
+    images: [
+      ...images,
       ...validImages.slice(0, remainingSlots),
-    ]
-
-    return combinedImages.slice(0, MAX_IMAGES)
+    ].slice(0, MAX_IMAGES),
   })
 
   e.target.value = ""
 }
 
 const removeImage = (indexToRemove: number) => {
-  setImages((currentImages) =>
-    currentImages.filter((_, index) => index !== indexToRemove),
-  )
+  updateCurrentItem({
+    images: images.filter((_, index) => index !== indexToRemove),
+  })
 }
 
 const imagePreviews = useMemo(
@@ -266,16 +318,13 @@ useEffect(() => {
 
 const resetForm = () => {
   setName("")
-  setDescription("")
-  setJustification("")
   setSelectedEmployee(null)
   setEmail("")
-  setPrice("")
-  setLink("")
-  setNeededByDate("")
-  setImages([])
-  setQuantity("1")
-  setQuantityFormat("");
+  setPurchaseItems([createEmptyItem()])
+  setHasMultipleItems(false)
+  setPurchaseItemCount("1")
+  setCurrentItemIndex(0)
+  setIsDatePickerOpen(false)
 }
 
 const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -298,44 +347,93 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     return
   }
 
-  const validation = validatePurchaseRequestForm({
-    name,
-    description,
-    justification,
-    quantity,
-    quantityFormat,
-    price,
-    link,
-    neededByDate,
-    email,
-    images,
-    minNeededByDateObject,
-  })
+  const validations = purchaseItems.slice(0, itemCount).map((item) =>
+    validatePurchaseRequestForm({
+      name,
+      description: item.description,
+      justification: item.justification,
+      quantity: item.quantity,
+      quantityFormat: item.quantityFormat,
+      price: item.price,
+      link: item.link,
+      neededByDate: item.neededByDate,
+      email,
+      images: item.images,
+      minNeededByDateObject,
+    }),
+  )
 
-  if (!validation.ok) {
-    setSubmitError(validation.error)
+  const invalidItemIndex = validations.findIndex((validation) => !validation.ok)
+
+  if (invalidItemIndex >= 0) {
+    const validation = validations[invalidItemIndex]
+    setCurrentItemIndex(invalidItemIndex)
+    setSubmitError(
+      validation.ok
+        ? "Une demande est invalide."
+        : `${itemCount > 1 ? `Article ${invalidItemIndex + 1}: ` : ""}${validation.error}`,
+    )
     window.scrollTo({ top: 0, behavior: "smooth" })
     return
   }
 
-  const values = validation.values
-  const submittedName = values.name
+  const validatedItems = validations
+    .filter((validation) => validation.ok)
+    .map((validation) => validation.values)
 
-  const formData = buildPurchaseRequestFormData({
-    description: values.description,
-    neededByDate: values.neededByDate,
-    images,
-    justification: values.justification,
-    link: values.link,
-    name: values.name,
-    price: values.price,
-    quantity: values.quantity,
-    quantityFormat: values.quantityFormat,
-    email: values.email,
-  })
+  const submittedName = validatedItems[0].name
+
+  const formData =
+    itemCount === 1
+      ? buildPurchaseRequestFormData({
+          description: validatedItems[0].description,
+          neededByDate: validatedItems[0].neededByDate,
+          images: purchaseItems[0].images,
+          justification: validatedItems[0].justification,
+          link: validatedItems[0].link,
+          name: validatedItems[0].name,
+          price: validatedItems[0].price,
+          quantity: validatedItems[0].quantity,
+          quantityFormat: validatedItems[0].quantityFormat,
+          email: validatedItems[0].email,
+        })
+      : new FormData()
+
+  if (itemCount > 1) {
+    formData.append("requested_by", submittedName)
+
+    if (validatedItems[0].email) {
+      formData.append("email", validatedItems[0].email)
+    }
+
+    formData.append(
+      "items",
+      JSON.stringify(
+        validatedItems.map((item, index) => ({
+          client_item_index: index,
+          description: item.description,
+          needed_by_date: item.neededByDate || null,
+          product_link: item.link || null,
+          quantity: item.quantity,
+          quantity_format: item.quantityFormat || null,
+          reason: item.justification || null,
+          requested_unit_price: item.price,
+        })),
+      ),
+    )
+
+    purchaseItems.slice(0, itemCount).forEach((item, itemIndex) => {
+      item.images.forEach((image) => {
+        formData.append(`pictures_${itemIndex}`, image, image.name)
+      })
+    })
+  }
 
   try {
-    const createdRequest = await createPurchaseRequest(formData, formToken)
+    const createdRequest =
+      itemCount === 1
+        ? await createPurchaseRequest(formData, formToken)
+        : await createPurchaseRequestBatch(formData, formToken)
 
     if (!createdRequest) {
       setSubmitError(
@@ -515,6 +613,106 @@ const successMessage = "Votre demande d'achat a bien été envoyée"
   )}
 </div>
 <div className="grid gap-5 gap-x-10 tablet:grid-cols-2">
+  <Field icon={SquareStack} label="Plusieurs articles?">
+    <div className="grid grid-cols-2 gap-2">
+      <button
+        type="button"
+        className={`h-12 rounded-lg border px-3 text-sm font-black transition ${
+          !hasMultipleItems
+            ? "border-secondary bg-secondary text-white shadow-md shadow-secondary/20"
+            : "border-secondary/20 bg-white text-secondary hover:border-secondary/45 hover:bg-primary/10"
+        }`}
+        onClick={() => {
+          setHasMultipleItems(false)
+          setPurchaseItemCount("1")
+          resizePurchaseItems(1)
+        }}
+        aria-pressed={!hasMultipleItems}
+      >
+        Non
+      </button>
+
+      <button
+        type="button"
+        className={`h-12 rounded-lg border px-3 text-sm font-black transition ${
+          hasMultipleItems
+            ? "border-secondary bg-secondary text-white shadow-md shadow-secondary/20"
+            : "border-secondary/20 bg-white text-secondary hover:border-secondary/45 hover:bg-primary/10"
+        }`}
+        onClick={() => {
+          const nextCount = Math.max(2, itemCount)
+          setHasMultipleItems(true)
+          setPurchaseItemCount(String(nextCount))
+          resizePurchaseItems(nextCount)
+        }}
+        aria-pressed={hasMultipleItems}
+      >
+        Oui
+      </button>
+    </div>
+  </Field>
+
+  {hasMultipleItems && (
+    <Field icon={Hash} label="Nombre d'articles">
+      <input
+        className={fieldControlClass}
+        type="number"
+        min="2"
+        max={MAX_PURCHASE_ITEMS}
+        step="1"
+        inputMode="numeric"
+        value={purchaseItemCount}
+        onChange={(e) => {
+          const nextValue = sanitizeQuantity(e.target.value)
+          const nextCount = Math.min(
+            Math.max(Number(nextValue) || 2, 2),
+            MAX_PURCHASE_ITEMS,
+          )
+
+          setPurchaseItemCount(String(nextCount))
+          resizePurchaseItems(nextCount)
+        }}
+      />
+    </Field>
+  )}
+</div>
+          </div>
+
+          <div className="flex flex-col gap-3 rounded-lg border border-secondary/15 bg-slate-50 px-4 py-3 tablet:flex-row tablet:items-center tablet:justify-between">
+            <div>
+              <p className="text-sm font-black text-secondary">
+                Article {currentItemIndex + 1}/{itemCount}
+              </p>
+              <p className="mt-1 text-sm text-slate-600">
+                Remplissez les details de cet article avant de passer au suivant.
+              </p>
+            </div>
+
+            {hasMultipleItems && (
+              <div className="flex flex-wrap gap-2">
+                {purchaseItems.slice(0, itemCount).map((_, index) => (
+                  <button
+                    type="button"
+                    key={index}
+                    className={`h-9 min-w-9 rounded-lg border px-3 text-sm font-black transition ${
+                      index === currentItemIndex
+                        ? "border-secondary bg-secondary text-white shadow-sm"
+                        : "border-secondary/20 bg-white text-secondary hover:bg-primary/10"
+                    }`}
+                    onClick={() => {
+                      setCurrentItemIndex(index)
+                      setIsDatePickerOpen(false)
+                    }}
+                    aria-label={`Aller a l'article ${index + 1}`}
+                  >
+                    {index + 1}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="grid gap-5 gap-x-10 tablet:grid-cols-2">
   <Field
     icon={Hash}
     label="Quantité"
@@ -533,7 +731,9 @@ const successMessage = "Votre demande d'achat a bien été envoyée"
       pattern="[0-9]*"
       placeholder="Ex: 2"
       value={quantity}
-      onChange={(e) => setQuantity(sanitizeQuantity(e.target.value))}
+      onChange={(e) =>
+        updateCurrentItem({ quantity: sanitizeQuantity(e.target.value) })
+      }
     />
   </Field>
 
@@ -551,12 +751,13 @@ const successMessage = "Votre demande d'achat a bien été envoyée"
       placeholder="Ex: boîte(s), paquet(s)"
       value={quantityFormat}
       onChange={(e) =>
-        setQuantityFormat(stripUnsafeText(e.target.value, 80))
+        updateCurrentItem({
+          quantityFormat: stripUnsafeText(e.target.value, 80),
+        })
       }
     />
   </Field>
 </div>
-          </div>
         <input
   type="text"
   name="companyWebsite"
@@ -581,9 +782,12 @@ const successMessage = "Votre demande d'achat a bien été envoyée"
               maxLength={MAX_DESCRIPTION_LENGTH}
               value={description}
               onChange={(e) =>
-                setDescription(
-                  stripUnsafeText(e.target.value, MAX_DESCRIPTION_LENGTH),
-                )
+                updateCurrentItem({
+                  description: stripUnsafeText(
+                    e.target.value,
+                    MAX_DESCRIPTION_LENGTH,
+                  ),
+                })
               }
               required
             />
@@ -603,9 +807,12 @@ const successMessage = "Votre demande d'achat a bien été envoyée"
               maxLength={MAX_JUSTIFICATION_LENGTH}
               value={justification}
               onChange={(e) =>
-                setJustification(
-                  stripUnsafeText(e.target.value, MAX_JUSTIFICATION_LENGTH),
-                )
+                updateCurrentItem({
+                  justification: stripUnsafeText(
+                    e.target.value,
+                    MAX_JUSTIFICATION_LENGTH,
+                  ),
+                })
               }
             />
           </Field>
@@ -623,7 +830,9 @@ const successMessage = "Votre demande d'achat a bien été envoyée"
                 id="price"
                 placeholder="0.00"
                 value={price}
-                onChange={(e) => setPrice(sanitizePrice(e.target.value))}
+                onChange={(e) =>
+                  updateCurrentItem({ price: sanitizePrice(e.target.value) })
+                }
               />
             </Field>
 
@@ -640,7 +849,9 @@ const successMessage = "Votre demande d'achat a bien été envoyée"
                 maxLength={MAX_LINK_LENGTH}
                 pattern="https?://.*"
                 value={link}
-                onChange={(e) => setLink(sanitizeUrl(e.target.value))}
+                onChange={(e) =>
+                  updateCurrentItem({ link: sanitizeUrl(e.target.value) })
+                }
               />
             </Field>
           </div>
@@ -783,7 +994,7 @@ const successMessage = "Votre demande d'achat a bien été envoyée"
                       type="button"
                       className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-secondary/25 bg-white px-4 text-sm font-bold text-secondary transition hover:bg-secondary hover:text-white"
                       onClick={() => {
-                        setNeededByDate("")
+                        updateCurrentItem({ neededByDate: "" })
                         setIsDatePickerOpen(false)
                       }}
                       aria-label="Effacer la date sélectionnée"
@@ -821,7 +1032,39 @@ const successMessage = "Votre demande d'achat a bien été envoyée"
         </div>
 
         <div className="flex flex-col gap-3 border-t border-secondary/10 bg-slate-50 px-5 py-4 tablet:flex-row tablet:items-center tablet:justify-between tablet:px-8">
-          
+          {hasMultipleItems ? (
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={currentItemIndex === 0}
+                className="inline-flex h-11 items-center justify-center rounded-lg border border-secondary/25 bg-white px-4 text-sm font-black text-secondary transition hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={() => {
+                  setCurrentItemIndex((index) => Math.max(index - 1, 0))
+                  setIsDatePickerOpen(false)
+                }}
+              >
+                Precedent
+              </button>
+
+              {currentItemIndex < itemCount - 1 && (
+                <button
+                  type="button"
+                  className="inline-flex h-11 items-center justify-center rounded-lg border border-secondary/25 bg-white px-4 text-sm font-black text-secondary transition hover:bg-primary/10"
+                  onClick={() => {
+                    setCurrentItemIndex((index) =>
+                      Math.min(index + 1, itemCount - 1),
+                    )
+                    setIsDatePickerOpen(false)
+                  }}
+                >
+                  Article suivant
+                </button>
+              )}
+            </div>
+          ) : (
+            <span />
+          )}
+
           <button
             type="submit"
             disabled={loading || !formToken || isFormTokenExpired || isRefreshingFormToken}
@@ -834,7 +1077,11 @@ const successMessage = "Votre demande d'achat a bien été envoyée"
              focus:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-55"
           >
             <Send size={18} aria-hidden="true" />
-            {loading ? "Envoi en cours..." : "Soumettre la demande"}
+            {loading
+              ? "Envoi en cours..."
+              : itemCount > 1
+                ? `Soumettre ${itemCount} demandes`
+                : "Soumettre la demande"}
           </button>
         </div>
       </form>

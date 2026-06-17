@@ -161,6 +161,10 @@ createPurchaseRequest: (
   formData: FormData,
   formToken: string
 ) => Promise<PurchaseRequest | null>
+createPurchaseRequestBatch: (
+  formData: FormData,
+  formToken: string
+) => Promise<PurchaseRequest[] | null>
   validateBuyerPrice: (
     id: number,
     token: string,
@@ -396,6 +400,38 @@ const createPurchaseRequest = useCallback(
   []
 )
 
+const createPurchaseRequestBatch = useCallback(
+  async (formData: FormData, formToken: string) => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      const data = await request<PurchaseRequest[]>("/purchase-request/batch", {
+        method: "POST",
+        headers: {
+          "x-purchase-request-form-token": formToken,
+        },
+        body: formData,
+      })
+
+      setPurchaseRequests((prev) => [...data, ...prev])
+
+      return data
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Erreur lors de la creation des demandes d'achat"
+
+      setError(message)
+      return null
+    } finally {
+      setLoading(false)
+    }
+  },
+  []
+)
+
   const validateBuyerPrice = useCallback(
   async (id: number, token: string, payload: BuyerValidationPayload) => {
       try {
@@ -566,6 +602,7 @@ const markPurchaseRequestAsPurchased = useCallback(
   fetchPurchaseRequestByToken,
   getPurchaseRequestFormToken,
   createPurchaseRequest,
+  createPurchaseRequestBatch,
   validateBuyerPrice,
   saveAdminDecision,
   markPurchaseRequestAsPurchased,

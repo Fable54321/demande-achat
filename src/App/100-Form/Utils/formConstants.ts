@@ -8,6 +8,7 @@ export const MAX_LINK_LENGTH = 2048
 export const MAX_QUANTITY = 9999
 export const MAX_QUANTITY_FORMAT_LENGTH = 80
 export const MAX_PRICE = 999999.99
+export const MAX_PURCHASE_ITEMS = 10
 
 export const MAX_IMAGES = 5
 export const MAX_IMAGE_SIZE_MB = 7
