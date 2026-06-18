@@ -107,7 +107,25 @@ const getItemQuantityLabel = (item: (typeof purchaseItems)[number]) => {
 }
 
 const getItemNumberValue = (value: unknown) => {
-  const numberValue = Number(value)
+  if (value === null || value === undefined || value === "") {
+    return null
+  }
+
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null
+  }
+
+  const normalizedValue = String(value)
+    .trim()
+    .replace(/\s/g, "")
+    .replace(",", ".")
+    .replace(/[^0-9.-]/g, "")
+
+  if (!normalizedValue) {
+    return null
+  }
+
+  const numberValue = Number(normalizedValue)
 
   return Number.isFinite(numberValue) ? numberValue : null
 }
@@ -138,24 +156,51 @@ const getConfirmedSupplierForItem = (item: (typeof purchaseItems)[number]) => {
   )
 }
 
+const getItemQuantityValue = (item: (typeof purchaseItems)[number]) =>
+  getItemNumberValue(item.quantity) ?? 1
+
+const getRequestedTotalForItem = (item: (typeof purchaseItems)[number]) => {
+  const requestedTotal = getItemNumberValue(item.requested_total_price)
+
+  if (requestedTotal !== null) {
+    return requestedTotal
+  }
+
+  const requestedUnitPrice = getItemNumberValue(item.requested_unit_price)
+
+  return requestedUnitPrice === null
+    ? null
+    : requestedUnitPrice * getItemQuantityValue(item)
+}
+
+const getConfirmedTotalForItem = (item: (typeof purchaseItems)[number]) => {
+  const confirmedUnitPrice = getConfirmedUnitPriceForItem(item)
+
+  if (confirmedUnitPrice !== null) {
+    return confirmedUnitPrice * getItemQuantityValue(item)
+  }
+
+  return (
+    getItemNumberValue(item.buyer_confirmed_total_price) ??
+    getRequestedTotalForItem(item)
+  )
+}
+
 const requestedTotal = purchaseItems.reduce((total, item) => {
-  const itemTotal = getItemNumberValue(item.requested_total_price)
+  const itemTotal = getRequestedTotalForItem(item)
 
   return itemTotal === null ? total : total + itemTotal
 }, 0)
 
 const confirmedTotal = purchaseItems.reduce((total, item) => {
-  const confirmedUnitPrice = getConfirmedUnitPriceForItem(item)
-  const quantity = getItemNumberValue(item.quantity) ?? 0
+  const itemTotal = getConfirmedTotalForItem(item)
 
-  if (confirmedUnitPrice === null) {
-    return total
-  }
-
-  return total + confirmedUnitPrice * quantity
+  return itemTotal === null ? total : total + itemTotal
 }, 0)
 
-const hasConfirmedTotal = purchaseItems.length > 0
+const hasConfirmedTotal = purchaseItems.some(
+  (item) => getConfirmedTotalForItem(item) !== null,
+)
 
 const canRequestDirectApproval = hasConfirmedTotal && confirmedTotal < 200
 
@@ -236,7 +281,8 @@ const payload = {
   direct_approval_approver: directApprovalApprover,
   items: purchaseItems.map((item) => ({
     id: item.id,
-    buyer_confirmed_unit_price: getConfirmedUnitPriceForItem(item) || item.requested_unit_price,
+    buyer_confirmed_unit_price:
+      getConfirmedUnitPriceForItem(item) ?? item.requested_unit_price,
     buyer_confirmed_supplier: getConfirmedSupplierForItem(item),
   })),
 }
@@ -288,12 +334,12 @@ const successMessage = "la confirmation de prix a bien été envoyée"
                   Validation acheteur
                 </p>
                 <h2 className="text-2xl font-black text-slate-950">
-                  Confirmation de prix
+                  Validation des informations
                 </h2>
               </div>
             </div>
             <p className="max-w-sm text-sm leading-6 text-slate-600">
-              Vérifiez simplement que le prix proposé semble raisonnable.
+              Vérifiez simplement que le prix proposé et la date demandée semblent raisonnables.
             </p>
           </div>
         </div>
@@ -352,12 +398,12 @@ const successMessage = "la confirmation de prix a bien été envoyée"
       </dd>
     </div>
 
-    <div className="rounded-lg border border-secondary/15 bg-white px-3 py-2 shadow-sm">
+    {/* <div className="rounded-lg border border-secondary/15 bg-white px-3 py-2 shadow-sm">
       <dt className="font-bold text-secondary">Total confirmé</dt>
       <dd className="mt-1 text-slate-700">
         {formatCurrency(confirmedTotal)}
       </dd>
-    </div>
+    </div> */}
   </dl>
 
   <div className="mt-5 flex flex-col gap-4">
@@ -407,7 +453,7 @@ const successMessage = "la confirmation de prix a bien été envoyée"
             </div>
 
             <div className="rounded-lg border border-secondary/10 bg-tertiary/50 px-3 py-2">
-              <dt className="font-bold text-secondary">Prix unitaire demandé</dt>
+              <dt className="font-bold text-secondary">Prix unitaire suggéré</dt>
               <dd className="mt-1 text-slate-700">
                 {item.requested_unit_price === null
                   ? "Non indiqué"
@@ -416,7 +462,7 @@ const successMessage = "la confirmation de prix a bien été envoyée"
             </div>
 
             <div className="rounded-lg border border-secondary/10 bg-tertiary/50 px-3 py-2">
-              <dt className="font-bold text-secondary">Total demandé</dt>
+              <dt className="font-bold text-secondary">Total suggéré</dt>
               <dd className="mt-1 text-slate-700">
                 {item.requested_total_price === null
                   ? "Non indiqué"
