@@ -10,9 +10,17 @@ import {
 } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import { useParams } from "react-router-dom"
-import { usePurchaseRequests } from "../../Contexts/PurchaseRequestContext"
+import {
+  usePurchaseRequests,
+  type PurchaseRequestItem,
+} from "../../Contexts/PurchaseRequestContext"
 import { MAX_PRICE } from "../100-Form/Utils/formConstants"
-import { isValidPrice, sanitizePrice, stripUnsafeText } from "../100-Form/Utils/sanitizers"
+import {
+  isValidPrice,
+  sanitizePrice,
+  sanitizeQuantity,
+  stripUnsafeText,
+} from "../100-Form/Utils/sanitizers"
 import SuccesOverlay from "../SuccesOverlay"
 
 const MAX_PURCHASE_REFERENCE_LENGTH = 120
@@ -35,20 +43,38 @@ const formatCurrency = (value: number) =>
     style: "currency",
   }).format(value)
 
+type PurchasedItem = PurchaseRequestItem & {
+  final_supplier?: string | null
+  final_total_price?: number | null
+  final_unit_price?: number | null
+  ordered_quantity?: number | null
+}
+
+type PurchasedRequestMetadata = {
+  final_supplier?: string | null
+  purchase_note?: string | null
+  purchase_reference?: string | null
+}
+
 const BuyingProcess = () => {
-  const [finalUnitPrice, setFinalUnitPrice] = useState("")
+  const [finalSupplier, setFinalSupplier] = useState("")
+  const [finalUnitPrices, setFinalUnitPrices] = useState<Record<number, string>>(
+    {},
+  )
+  const [orderedQuantities, setOrderedQuantities] = useState<
+    Record<number, string>
+  >({})
   const [purchaseReference, setPurchaseReference] = useState("")
   const [purchaseNote, setPurchaseNote] = useState("")
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [submitSuccess, setSubmitSuccess] = useState(false)
-  const [finalSupplier, setFinalSupplier] = useState("")
   const [purchaseDocuments, setPurchaseDocuments] = useState<File[]>([])
 
   const { id, token } = useParams<{ id: string; token: string }>()
 
   const {
     error,
-    fetchPurchaseRequestByToken,
+    getPurchaseRequestByToken,
     selectedPurchaseRequest,
     markPurchaseRequestAsPurchased,
     loading,
@@ -57,29 +83,83 @@ const BuyingProcess = () => {
   useEffect(() => {
     if (!id || !token) return
 
-    fetchPurchaseRequestByToken(Number(id), token, "acheter")
-  }, [fetchPurchaseRequestByToken, id, token])
+    getPurchaseRequestByToken(Number(id), token, "acheter")
+  }, [getPurchaseRequestByToken, id, token])
 
-  const suggestedFinalUnitPrice =
-    selectedPurchaseRequest?.final_unit_price ??
-    selectedPurchaseRequest?.buyer_confirmed_unit_price ??
-    selectedPurchaseRequest?.requested_unit_price ??
-    null
+  const requestMetadata =
+    selectedPurchaseRequest as
+      | (typeof selectedPurchaseRequest & PurchasedRequestMetadata)
+      | null
 
-  const effectiveFinalUnitPrice =
-    finalUnitPrice.trim() === ""
-      ? suggestedFinalUnitPrice
-      : Number(finalUnitPrice)
+  const purchaseItems = useMemo(
+    () => (selectedPurchaseRequest?.items ?? []) as PurchasedItem[],
+    [selectedPurchaseRequest?.items],
+  )
 
-  const finalTotal = useMemo(() => {
-    if (!selectedPurchaseRequest || effectiveFinalUnitPrice === null) return null
+  const getNumberValue = (value: unknown) => {
+    if (value === null || value === undefined || value === "") return null
 
-    const unitPrice = Number(effectiveFinalUnitPrice)
+    const numberValue = Number(value)
 
-    if (!Number.isFinite(unitPrice)) return null
+    return Number.isFinite(numberValue) ? numberValue : null
+  }
 
-    return unitPrice * selectedPurchaseRequest.quantity
-  }, [effectiveFinalUnitPrice, selectedPurchaseRequest])
+  const formatOptionalCurrency = (value: unknown) => {
+    const numberValue = getNumberValue(value)
+
+    return numberValue === null ? "Non precise" : formatCurrency(numberValue)
+  }
+
+  const getItemQuantityLabel = (item: PurchasedItem) => {
+    const quantity = item.quantity ?? "Non indiquee"
+    const format = item.quantity_format?.trim()
+
+    return format ? `${quantity} ${format}` : String(quantity)
+  }
+
+  const getSuggestedFinalUnitPrice = (item: PurchasedItem) =>
+    getNumberValue(item.final_unit_price) ??
+    getNumberValue(item.buyer_confirmed_unit_price) ??
+    getNumberValue(item.requested_unit_price)
+
+  const getEffectiveFinalUnitPrice = (item: PurchasedItem) => {
+    const typedValue = finalUnitPrices[item.id]?.trim()
+
+    return typedValue ? getNumberValue(typedValue) : getSuggestedFinalUnitPrice(item)
+  }
+
+  const getOrderedQuantity = (item: PurchasedItem) => {
+    const typedValue = orderedQuantities[item.id]?.trim()
+
+    return typedValue
+      ? getNumberValue(typedValue)
+      : getNumberValue(item.ordered_quantity) ?? getNumberValue(item.quantity)
+  }
+
+  const getFinalTotalForItem = (item: PurchasedItem) => {
+    const finalUnitPrice = getEffectiveFinalUnitPrice(item)
+    const orderedQuantity = getOrderedQuantity(item)
+
+    if (finalUnitPrice === null || orderedQuantity === null) {
+      return getNumberValue(item.final_total_price)
+    }
+
+    return finalUnitPrice * orderedQuantity
+  }
+
+  const finalTotal = purchaseItems.reduce((total, item) => {
+    const itemTotal = getFinalTotalForItem(item)
+
+    return itemTotal === null ? total : total + itemTotal
+  }, 0)
+
+  const suggestedFinalSupplier =
+    requestMetadata?.final_supplier ||
+    purchaseItems.find((item) => item.final_supplier)?.final_supplier ||
+    purchaseItems.find((item) => item.buyer_confirmed_supplier)
+      ?.buyer_confirmed_supplier ||
+    purchaseItems.find((item) => item.requested_supplier)?.requested_supplier ||
+    ""
 
   const handlePurchaseDocumentChange = (
     event: React.ChangeEvent<HTMLInputElement>,
@@ -131,10 +211,6 @@ const BuyingProcess = () => {
 
     if (!selectedPurchaseRequest || !id || !token) return
 
-    const safeFinalUnitPrice =
-      finalUnitPrice.trim() === ""
-        ? suggestedFinalUnitPrice
-        : Number(sanitizePrice(finalUnitPrice))
     const safePurchaseReference = stripUnsafeText(
       purchaseReference,
       MAX_PURCHASE_REFERENCE_LENGTH,
@@ -143,18 +219,57 @@ const BuyingProcess = () => {
       purchaseNote,
       MAX_PURCHASE_NOTE_LENGTH,
     ).trim()
+    const safeFinalSupplier = stripUnsafeText(finalSupplier, 120).trim()
 
-    if (safeFinalUnitPrice === null || !isValidPrice(safeFinalUnitPrice)) {
-      setSubmitError("Le prix final doit etre un montant valide.")
+    const safeItems = purchaseItems.map((item) => {
+      const typedFinalUnitPrice = finalUnitPrices[item.id]?.trim()
+      const typedOrderedQuantity = orderedQuantities[item.id]?.trim()
+      const finalUnitPrice = typedFinalUnitPrice
+        ? getNumberValue(sanitizePrice(typedFinalUnitPrice))
+        : getSuggestedFinalUnitPrice(item)
+      const orderedQuantity = typedOrderedQuantity
+        ? getNumberValue(sanitizeQuantity(typedOrderedQuantity))
+        : getNumberValue(item.ordered_quantity) ?? getNumberValue(item.quantity)
+
+      return {
+        id: item.id,
+        final_supplier:
+          safeFinalSupplier ||
+          item.final_supplier ||
+          item.buyer_confirmed_supplier ||
+          item.requested_supplier ||
+          null,
+        final_unit_price: finalUnitPrice,
+        ordered_quantity: orderedQuantity,
+      }
+    })
+
+    const invalidItemIndex = safeItems.findIndex(
+      (item) =>
+        item.final_unit_price === null ||
+        !isValidPrice(item.final_unit_price) ||
+        item.ordered_quantity === null ||
+        item.ordered_quantity <= 0,
+    )
+
+    if (invalidItemIndex >= 0) {
+      setSubmitError(
+        `Article ${invalidItemIndex + 1}: le prix final et la quantite doivent etre valides.`,
+      )
       return
     }
+
     const formData = new FormData()
 
-    formData.append("final_unit_price", String(safeFinalUnitPrice))
     formData.append("purchased_by_user_id", "1")
+    formData.append("items", JSON.stringify(safeItems))
 
-    if (finalSupplier.trim()) {
-      formData.append("final_supplier", stripUnsafeText(finalSupplier, 120).trim())
+    if (safeItems.length === 1 && safeItems[0].final_unit_price !== null) {
+      formData.append("final_unit_price", String(safeItems[0].final_unit_price))
+    }
+
+    if (safeFinalSupplier) {
+      formData.append("final_supplier", safeFinalSupplier)
     }
 
     if (safePurchaseReference) {
@@ -190,20 +305,18 @@ const BuyingProcess = () => {
   }
 
   const name = "Ricardo"
-
-  const successMessage = "les informations d'achats ont bien été sauvegardées."
+  const successMessage = "les informations d'achats ont bien ete sauvegardees."
 
   return (
     <section className="relative w-full px-4 pb-10 pt-6 tablet:px-8">
-         {submitSuccess && 
-             
-                <SuccesOverlay
-                successMessage={successMessage}
-                onClose={() => setSubmitSuccess(false)}
-                name={name}
-                />
-             
-            }
+      {submitSuccess && (
+        <SuccesOverlay
+          successMessage={successMessage}
+          onClose={() => setSubmitSuccess(false)}
+          name={name}
+        />
+      )}
+
       <form
         onSubmit={handleSubmit}
         className="mx-auto flex w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-secondary/15 bg-white shadow-2xl shadow-secondary/10"
@@ -224,7 +337,8 @@ const BuyingProcess = () => {
               </div>
             </div>
             <p className="max-w-sm text-base leading-7 text-slate-600">
-              Confirmez les informations finales après avoir trouvé et acheté le produit.
+              Confirmez les informations finales apres avoir trouve et achete le
+              produit.
             </p>
           </div>
         </div>
@@ -260,26 +374,19 @@ const BuyingProcess = () => {
                   </span>
                   <div className="flex min-w-0 flex-col gap-2">
                     <p className="text-lg font-bold text-black">
-                      Demande achetée
+                      Demande achetee
                     </p>
-                    {selectedPurchaseRequest.description && (
-                      <p className="ml-2 mt-1 text-base leading-7 text-slate-900">
-                        <span className="font-bold">Produit:</span>
-                        <br />
-                        {selectedPurchaseRequest.description}
-                      </p>
-                    )}
-                    {selectedPurchaseRequest.reason && (
-                      <p className="ml-2 mt-1 text-base leading-7 text-slate-900">
-                        <span className="font-bold">Justification:</span>
-                        <br />
-                        {selectedPurchaseRequest.reason}
-                      </p>
-                    )}
+                    <p className="text-sm text-slate-700">
+                      Demande #{selectedPurchaseRequest.request_reference}
+                    </p>
+                    <p className="text-sm text-slate-700">
+                      {purchaseItems.length} article
+                      {purchaseItems.length > 1 ? "s" : ""} a acheter
+                    </p>
                   </div>
                 </div>
 
-                <dl className="mt-5 grid gap-3 text-base tablet:grid-cols-4">
+                <dl className="mt-5 grid gap-3 text-base tablet:grid-cols-3">
                   <div className="rounded-lg border border-secondary/15 bg-white px-3 py-2 shadow-sm">
                     <dt className="flex items-center gap-2 font-bold text-secondary">
                       <User size={16} aria-hidden="true" />
@@ -292,60 +399,171 @@ const BuyingProcess = () => {
                   <div className="rounded-lg border border-secondary/15 bg-white px-3 py-2 shadow-sm">
                     <dt className="flex items-center gap-2 font-bold text-secondary">
                       <Hash size={16} aria-hidden="true" />
-                      Quantité
+                      Articles
                     </dt>
                     <dd className="mt-1 text-slate-700">
-                      {selectedPurchaseRequest.quantity}
+                      {purchaseItems.length}
                     </dd>
                   </div>
                   <div className="rounded-lg border border-secondary/15 bg-white px-3 py-2 shadow-sm">
                     <dt className="flex items-center gap-2 font-bold text-secondary">
                       <DollarSign size={16} aria-hidden="true" />
-                      Prix confirmé
+                      Total final
                     </dt>
                     <dd className="mt-1 text-slate-700">
-                      {selectedPurchaseRequest.buyer_confirmed_unit_price
-                        ? formatCurrency(selectedPurchaseRequest.buyer_confirmed_unit_price)
-                        : "Non precise"}
-                    </dd>
-                  </div>
-                  <div className="rounded-lg border border-secondary/15 bg-white px-3 py-2 shadow-sm">
-                    <dt className="font-bold text-secondary">Fournisseur</dt>
-                    <dd className="mt-1 text-slate-700">
-                      {selectedPurchaseRequest.buyer_confirmed_supplier ||
-                        selectedPurchaseRequest.requested_supplier ||
-                        "Non precise"}
+                      {formatCurrency(finalTotal)}
                     </dd>
                   </div>
                 </dl>
+
+                <div className="mt-5 flex flex-col gap-4">
+                  {purchaseItems.map((item) => (
+                    <div
+                      key={item.id}
+                      className="rounded-xl border border-secondary/15 bg-white p-4 shadow-sm"
+                    >
+                      <div className="flex flex-col gap-2">
+                        <p className="text-sm font-black uppercase tracking-[0.12em] text-secondary">
+                          Article {item.item_index}
+                        </p>
+                        <p className="text-slate-900">
+                          <span className="font-bold">Produit:</span>
+                          <br />
+                          {item.description || "Non precise"}
+                        </p>
+                        {item.reason && (
+                          <p className="text-slate-900">
+                            <span className="font-bold">Justification:</span>
+                            <br />
+                            {item.reason}
+                          </p>
+                        )}
+                        <dl className="mt-2 grid gap-3 text-sm tablet:grid-cols-4">
+                          <div className="rounded-lg border border-secondary/10 bg-tertiary/50 px-3 py-2">
+                            <dt className="font-bold text-secondary">
+                              Quantite
+                            </dt>
+                            <dd className="mt-1 text-slate-700">
+                              {getItemQuantityLabel(item)}
+                            </dd>
+                          </div>
+                          <div className="rounded-lg border border-secondary/10 bg-tertiary/50 px-3 py-2">
+                            <dt className="font-bold text-secondary">
+                              Prix demande
+                            </dt>
+                            <dd className="mt-1 text-slate-700">
+                              {formatOptionalCurrency(item.requested_unit_price)}
+                            </dd>
+                          </div>
+                          <div className="rounded-lg border border-secondary/10 bg-tertiary/50 px-3 py-2">
+                            <dt className="font-bold text-secondary">
+                              Prix confirme
+                            </dt>
+                            <dd className="mt-1 text-slate-700">
+                              {formatOptionalCurrency(
+                                item.buyer_confirmed_unit_price,
+                              )}
+                            </dd>
+                          </div>
+                          <div className="rounded-lg border border-secondary/10 bg-tertiary/50 px-3 py-2">
+                            <dt className="font-bold text-secondary">
+                              Fournisseur
+                            </dt>
+                            <dd className="mt-1 text-slate-700">
+                              {item.final_supplier ||
+                                item.buyer_confirmed_supplier ||
+                                item.requested_supplier ||
+                                "Non precise"}
+                            </dd>
+                          </div>
+                        </dl>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               <div className="grid gap-4 tablet:grid-cols-3">
-                <label className="flex flex-col gap-2 text-base font-bold text-slate-700">
-                  Prix unitaire final
-                  <input
-                    type="number"
-                    min="0"
-                    max={MAX_PRICE}
-                    step="0.01"
-                    inputMode="decimal"
-                    value={finalUnitPrice}
-                    onChange={(event) => {
-                      setFinalUnitPrice(sanitizePrice(event.target.value))
-                      setSubmitError(null)
-                    }}
-                    placeholder={
-                      suggestedFinalUnitPrice
-                        ? String(suggestedFinalUnitPrice)
-                        : "Ex: 25.00"
-                    }
-                    className="h-13 min-h-13 rounded-lg border border-secondary/20 bg-white px-3 text-base font-semibold text-slate-800 shadow-sm outline-none transition focus:border-secondary focus:ring-4 focus:ring-primary/20"
-                    required
-                  />
-                </label>
+                <div className="grid gap-4 tablet:col-span-3">
+                  {purchaseItems.map((item) => {
+                    const suggestedFinalUnitPrice =
+                      getSuggestedFinalUnitPrice(item)
+                    const itemFinalTotal = getFinalTotalForItem(item)
+
+                    return (
+                      <div
+                        key={item.id}
+                        className="rounded-xl border border-secondary/15 bg-white p-4 shadow-sm"
+                      >
+                        <p className="mb-3 font-black text-secondary">
+                          Article {item.item_index}
+                        </p>
+                        <div className="grid gap-4 tablet:grid-cols-3">
+                          <label className="flex flex-col gap-2 text-base font-bold text-slate-700">
+                            Prix unitaire final
+                            <input
+                              type="number"
+                              min="0"
+                              max={MAX_PRICE}
+                              step="0.01"
+                              inputMode="decimal"
+                              value={finalUnitPrices[item.id] ?? ""}
+                              onChange={(event) => {
+                                setFinalUnitPrices((currentPrices) => ({
+                                  ...currentPrices,
+                                  [item.id]: sanitizePrice(event.target.value),
+                                }))
+                                setSubmitError(null)
+                              }}
+                              placeholder={
+                                suggestedFinalUnitPrice
+                                  ? String(suggestedFinalUnitPrice)
+                                  : "Ex: 25.00"
+                              }
+                              className="h-13 min-h-13 rounded-lg border border-secondary/20 bg-white px-3 text-base font-semibold text-slate-800 shadow-sm outline-none transition focus:border-secondary focus:ring-4 focus:ring-primary/20"
+                              required
+                            />
+                          </label>
+                          <label className="flex flex-col gap-2 text-base font-bold text-slate-700">
+                            Quantite achetee
+                            <input
+                              type="number"
+                              min="1"
+                              step="1"
+                              inputMode="numeric"
+                              value={orderedQuantities[item.id] ?? ""}
+                              onChange={(event) => {
+                                setOrderedQuantities((currentQuantities) => ({
+                                  ...currentQuantities,
+                                  [item.id]: sanitizeQuantity(
+                                    event.target.value,
+                                  ),
+                                }))
+                                setSubmitError(null)
+                              }}
+                              placeholder={String(
+                                item.ordered_quantity ?? item.quantity,
+                              )}
+                              className="h-13 min-h-13 rounded-lg border border-secondary/20 bg-white px-3 text-base font-semibold text-slate-800 shadow-sm outline-none transition focus:border-secondary focus:ring-4 focus:ring-primary/20"
+                              required
+                            />
+                          </label>
+                          <div className="rounded-lg border border-secondary/15 bg-tertiary/70 px-4 py-3 text-base leading-7 text-slate-700">
+                            <span className="font-bold text-secondary">
+                              Total:
+                            </span>{" "}
+                            {itemFinalTotal !== null
+                              ? formatCurrency(itemFinalTotal)
+                              : "A calculer"}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
 
                 <label className="flex flex-col gap-2 text-base font-bold text-slate-700">
-                  Réference d'achat
+                  Reference d'achat
                   <input
                     type="text"
                     value={purchaseReference}
@@ -359,35 +577,32 @@ const BuyingProcess = () => {
                     }
                     maxLength={MAX_PURCHASE_REFERENCE_LENGTH}
                     placeholder={
-                      selectedPurchaseRequest.purchase_reference ||
-                      "Numéro de facture, commande ou reçu"
+                      requestMetadata?.purchase_reference ||
+                      "Numero de facture, commande ou recu"
                     }
                     className="h-13 min-h-13 rounded-lg border border-secondary/20 bg-white px-3 text-base font-semibold text-slate-800 shadow-sm outline-none transition focus:border-secondary focus:ring-4 focus:ring-primary/20"
                   />
                 </label>
 
                 <label className="flex flex-col gap-2 text-base font-bold text-slate-700">
-  Fournisseur final
-  <input
-    type="text"
-    value={finalSupplier}
-    onChange={(event) =>
-      setFinalSupplier(stripUnsafeText(event.target.value, 120))
-    }
-    maxLength={120}
-    placeholder={
-      selectedPurchaseRequest.final_supplier ||
-      selectedPurchaseRequest.buyer_confirmed_supplier ||
-      selectedPurchaseRequest.requested_supplier ||
-      "Fournisseur utilisé pour l'achat"
-    }
-    className="h-13 min-h-13 rounded-lg border border-secondary/20 bg-white px-3 text-base font-semibold text-slate-800 shadow-sm outline-none transition focus:border-secondary focus:ring-4 focus:ring-primary/20"
-  />
-</label>
+                  Fournisseur final
+                  <input
+                    type="text"
+                    value={finalSupplier}
+                    onChange={(event) =>
+                      setFinalSupplier(stripUnsafeText(event.target.value, 120))
+                    }
+                    maxLength={120}
+                    placeholder={
+                      suggestedFinalSupplier || "Fournisseur utilise pour l'achat"
+                    }
+                    className="h-13 min-h-13 rounded-lg border border-secondary/20 bg-white px-3 text-base font-semibold text-slate-800 shadow-sm outline-none transition focus:border-secondary focus:ring-4 focus:ring-primary/20"
+                  />
+                </label>
 
                 <div className="rounded-lg border border-secondary/15 bg-tertiary/70 px-4 py-3 text-base leading-7 text-slate-700 tablet:col-span-2">
                   <span className="font-bold text-secondary">Total final: </span>
-                  {finalTotal !== null ? formatCurrency(finalTotal) : "A calculer"}
+                  {formatCurrency(finalTotal)}
                 </div>
 
                 <div className="flex flex-col gap-3 tablet:col-span-2">
@@ -403,8 +618,9 @@ const BuyingProcess = () => {
                     </span>
 
                     <span className="mt-1 text-sm text-slate-500">
-                      {purchaseDocuments.length}/{MAX_PURCHASE_DOCUMENTS} fichier(s) - JPG,
-                      PNG, WEBP ou PDF - Maximum {MAX_PURCHASE_DOCUMENT_SIZE_MB} MB
+                      {purchaseDocuments.length}/{MAX_PURCHASE_DOCUMENTS}{" "}
+                      fichier(s) - JPG, PNG, WEBP ou PDF - Maximum{" "}
+                      {MAX_PURCHASE_DOCUMENT_SIZE_MB} MB
                     </span>
 
                     <input
@@ -452,14 +668,17 @@ const BuyingProcess = () => {
                     value={purchaseNote}
                     onChange={(event) =>
                       setPurchaseNote(
-                        stripUnsafeText(event.target.value, MAX_PURCHASE_NOTE_LENGTH),
+                        stripUnsafeText(
+                          event.target.value,
+                          MAX_PURCHASE_NOTE_LENGTH,
+                        ),
                       )
                     }
                     rows={4}
                     maxLength={MAX_PURCHASE_NOTE_LENGTH}
                     placeholder={
-                      selectedPurchaseRequest.purchase_note ||
-                      "Détails utiles: livraison, garantie, emplacement, suivi, etc."
+                      requestMetadata?.purchase_note ||
+                      "Details utiles: livraison, garantie, emplacement, suivi, etc."
                     }
                     className="min-h-32 resize-y rounded-lg border border-secondary/20 bg-white px-3 py-3 text-base font-semibold leading-7 text-slate-800 shadow-sm outline-none transition placeholder:font-medium placeholder:text-slate-400 focus:border-secondary focus:ring-4 focus:ring-primary/20"
                   />
@@ -475,7 +694,8 @@ const BuyingProcess = () => {
               Finaliser l'achat
             </p>
             <p className="mt-1 text-base leading-7 text-slate-500">
-              Une fois confirmé, la demande sera marquée comme achetée avec les informations finales.
+              Une fois confirme, la demande sera marquee comme achetee avec les
+              informations finales.
             </p>
           </div>
 
