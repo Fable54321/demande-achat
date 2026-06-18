@@ -236,7 +236,7 @@ const payload = {
   direct_approval_approver: directApprovalApprover,
   items: purchaseItems.map((item) => ({
     id: item.id,
-    buyer_confirmed_unit_price: getConfirmedUnitPriceForItem(item),
+    buyer_confirmed_unit_price: getConfirmedUnitPriceForItem(item) || item.requested_unit_price,
     buyer_confirmed_supplier: getConfirmedSupplierForItem(item),
   })),
 }
