@@ -11,7 +11,7 @@ import {
 
 import { useParams } from "react-router-dom"
 import { usePurchaseRequests } from "../../Contexts/PurchaseRequestContext"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo } from "react"
 import SendEmailOverlay from "../SendEmailOverlay"
 import SuccesOverlay from "../SuccesOverlay"
 
@@ -33,24 +33,63 @@ const AdminApproval = () => {
   token: string
 }>()
 
-  const {
-    error,
-    selectedPurchaseRequest,
-    saveAdminDecision,
-    fetchPurchaseRequestByToken,
-    loading,
-  } = usePurchaseRequests();
+const {
+  error,
+  selectedPurchaseRequest,
+  saveAdminDecision,
+  getPurchaseRequestByToken,
+  loading,
+} = usePurchaseRequests()
 const [adminDecision, setAdminDecision] = useState<AdminDecision>(null)
 const [refuseReason, setRefuseReason] = useState("")
 const [waitReason, setWaitReason] = useState("")
   const note = "";
-  const email = selectedPurchaseRequest?.request_email ?? null
+  const email = selectedPurchaseRequest?.requester_email ?? null
+
+  const purchaseItems = useMemo(() => {
+  return selectedPurchaseRequest?.items ?? []
+}, [selectedPurchaseRequest?.items])
+
+const getNumberValue = (value: unknown) => {
+  const numberValue = Number(value)
+
+  return Number.isFinite(numberValue) ? numberValue : null
+}
+
+const formatOptionalCurrency = (value: unknown) => {
+  const numberValue = getNumberValue(value)
+
+  return numberValue === null ? "Non indiqué" : formatCurrency(numberValue)
+}
+
+const getItemQuantityLabel = (item: (typeof purchaseItems)[number]) => {
+  const quantity = item.quantity ?? "Non indiquée"
+  const format = item.quantity_format?.trim()
+
+  return format ? `${quantity} ${format}` : String(quantity)
+}
+
+const requestedTotal = useMemo(() => {
+  return purchaseItems.reduce((total, item) => {
+    const itemTotal = getNumberValue(item.requested_total_price)
+
+    return itemTotal === null ? total : total + itemTotal
+  }, 0)
+}, [purchaseItems])
+
+const confirmedTotal = useMemo(() => {
+  return purchaseItems.reduce((total, item) => {
+    const itemTotal = getNumberValue(item.buyer_confirmed_total_price)
+
+    return itemTotal === null ? total : total + itemTotal
+  }, 0)
+}, [purchaseItems])
 
 useEffect(() => {
   if (!id || !token) return
 
-  fetchPurchaseRequestByToken(Number(id), token, "approbation-achat")
-},[fetchPurchaseRequestByToken, id, token]);
+  getPurchaseRequestByToken(Number(id), token, "approbation-achat")
+},[getPurchaseRequestByToken, id, token]);
   
 
 const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -139,7 +178,7 @@ const successMessage = "la décision a bien été envoyée";
           {submitSuccess && (
             <div className="flex items-start gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
               <CheckCircle2 className="mt-0.5 shrink-0" size={18} />
-              <span>Le prix demandé a ete confirmé.</span>
+              <span>La décision a été envoyée.</span>
             </div>
           )}
 
@@ -157,61 +196,142 @@ const successMessage = "la décision a bien été envoyée";
             </div>
           )}
 
-          {selectedPurchaseRequest && 
-        
-          <div className="rounded-xl border border-secondary/15 bg-tertiary/70 p-4 tablet:p-5">
-            <div className="flex items-start gap-3">
-              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-secondary text-white shadow-sm shadow-secondary/20">
-                <PackageCheck size={22} aria-hidden="true" />
-              </span>
-              <div className=" min-w-0 flex flex-col gap-2">
-                <p className="font-bold text-black text-[1.1em]">Demande à vérifier</p>
-                
-                   
-                  {selectedPurchaseRequest?.description && <p className="mt-1 ml-2 leading-6 text-slate-900"><span className="font-bold">Produit:</span> <br/> {selectedPurchaseRequest.description}</p>}
-                
-                {selectedPurchaseRequest?.reason && <p className="mt-1 ml-2 leading-6 text-slate-900" ><span className="font-bold">Justification:</span> <br/> {selectedPurchaseRequest.reason}</p>}
-              </div>
-            </div>
+          {selectedPurchaseRequest && (
+  <div className="rounded-xl border border-secondary/15 bg-tertiary/70 p-4 tablet:p-5">
+    <div className="flex items-start gap-3">
+      <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-secondary text-white shadow-sm shadow-secondary/20">
+        <PackageCheck size={22} aria-hidden="true" />
+      </span>
 
-            <dl className="mt-5 flex flex-col gap-3  ">
-             <div className="flex gap-3 w-full">  
-              <div className="rounded-lg border border-secondary/15 bg-white px-3 py-2 shadow-sm flex-1">
-                <dt className="flex items-center gap-2 font-bold text-secondary">
-                  <User size={16} aria-hidden="true" />
-                  Demandeur
-                </dt>
-                <dd className="mt-1 text-slate-700">
-                  {selectedPurchaseRequest?.requested_by && selectedPurchaseRequest.requested_by}
-                </dd>
+      <div className="min-w-0 flex flex-1 flex-col gap-2">
+        <p className="font-bold text-black text-[1.1em]">
+          Demande à approuver
+        </p>
+
+        <p className="text-sm text-slate-700">
+          Demande #{selectedPurchaseRequest.request_reference}
+        </p>
+
+        <p className="text-sm text-slate-700">
+          {purchaseItems.length} article{purchaseItems.length > 1 ? "s" : ""}
+        </p>
+      </div>
+    </div>
+
+    <dl className="mt-5 grid gap-3 text-sm tablet:grid-cols-3">
+      <div className="rounded-lg border border-secondary/15 bg-white px-3 py-2 shadow-sm">
+        <dt className="flex items-center gap-2 font-bold text-secondary">
+          <User size={16} aria-hidden="true" />
+          Demandeur
+        </dt>
+        <dd className="mt-1 text-slate-700">
+          {selectedPurchaseRequest.requested_by || "Non indiqué"}
+        </dd>
+      </div>
+
+      <div className="rounded-lg border border-secondary/15 bg-white px-3 py-2 shadow-sm">
+        <dt className="flex items-center gap-2 font-bold text-secondary">
+          <DollarSign size={16} aria-hidden="true" />
+          Total estimé
+        </dt>
+        <dd className="mt-1 text-slate-700">
+          {formatCurrency(requestedTotal)}
+        </dd>
+      </div>
+
+      <div className="rounded-lg border border-secondary/15 bg-white px-3 py-2 shadow-sm">
+        <dt className="font-bold text-secondary">
+          Total confirmé par l'acheteur
+        </dt>
+        <dd className="mt-1 text-slate-700">
+          {formatCurrency(confirmedTotal)}
+        </dd>
+      </div>
+    </dl>
+
+    <div className="mt-5 flex flex-col gap-4">
+      {purchaseItems.map((item) => (
+        <div
+          key={item.id}
+          className="rounded-xl border border-secondary/15 bg-white p-4 shadow-sm"
+        >
+          <div className="flex flex-col gap-2">
+            <p className="text-sm font-black uppercase tracking-[0.12em] text-secondary">
+              Article {item.item_index}
+            </p>
+
+            <p className="text-slate-900">
+              <span className="font-bold">Produit:</span>
+              <br />
+              {item.description || "Non indiqué"}
+            </p>
+
+            {item.reason && (
+              <p className="text-slate-900">
+                <span className="font-bold">Justification:</span>
+                <br />
+                {item.reason}
+              </p>
+            )}
+
+            {item.product_link && (
+              <div className="text-slate-900">
+                <p className="font-bold">Lien vers le produit:</p>
+                <a
+                  href={item.product_link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-1 inline-flex max-w-full items-center gap-2 rounded-lg border border-secondary/15 bg-white px-3 py-2 text-sm font-bold text-secondary shadow-sm transition hover:border-secondary/35 hover:bg-primary/10"
+                >
+                  Voir le produit
+                </a>
               </div>
-              <div className="rounded-lg border border-secondary/15 bg-white px-3 py-2 shadow-sm flex-1">
+            )}
+
+            <dl className="mt-2 grid gap-3 text-sm tablet:grid-cols-4">
+              <div className="rounded-lg border border-secondary/10 bg-tertiary/50 px-3 py-2">
                 <dt className="font-bold text-secondary">Quantité</dt>
                 <dd className="mt-1 text-slate-700">
-                  {selectedPurchaseRequest?.quantity && selectedPurchaseRequest.quantity}
+                  {getItemQuantityLabel(item)}
                 </dd>
               </div>
-             </div>
-             <div className="flex gap-3 w-full"> 
-              <div className="rounded-lg border border-secondary/15 bg-white px-3 py-2 shadow-sm flex-1">
-                <dt className="flex items-center gap-2 font-bold text-secondary">
-                  <DollarSign size={16} aria-hidden="true" />
-                  Prix unitaire (confirmé par l'acheteur)
-                </dt>
+
+              <div className="rounded-lg border border-secondary/10 bg-tertiary/50 px-3 py-2">
+                <dt className="font-bold text-secondary">Prix demandé</dt>
                 <dd className="mt-1 text-slate-700">
-                  { selectedPurchaseRequest?.buyer_confirmed_unit_price && formatCurrency(selectedPurchaseRequest.buyer_confirmed_unit_price)}
+                  {formatOptionalCurrency(item.requested_unit_price)}
                 </dd>
               </div>
-              <div className="rounded-lg border border-secondary/15 bg-white px-3 py-2 shadow-sm flex-1">
-                <dt className="font-bold text-secondary">Prix total (confirmé par l'acheteur)</dt>
+
+              <div className="rounded-lg border border-secondary/10 bg-tertiary/50 px-3 py-2">
+                <dt className="font-bold text-secondary">Prix confirmé</dt>
                 <dd className="mt-1 text-slate-700">
-                  {selectedPurchaseRequest?.buyer_confirmed_total_price &&   formatCurrency(selectedPurchaseRequest.buyer_confirmed_total_price)}
+                  {formatOptionalCurrency(item.buyer_confirmed_unit_price)}
                 </dd>
               </div>
-              </div> 
+
+              <div className="rounded-lg border border-secondary/10 bg-tertiary/50 px-3 py-2">
+                <dt className="font-bold text-secondary">Total confirmé</dt>
+                <dd className="mt-1 text-slate-700">
+                  {formatOptionalCurrency(item.buyer_confirmed_total_price)}
+                </dd>
+              </div>
             </dl>
+
+            {item.buyer_confirmed_supplier && (
+              <p className="text-sm text-slate-700">
+                <span className="font-bold text-secondary">
+                  Fournisseur potentiel:
+                </span>{" "}
+                {item.buyer_confirmed_supplier}
+              </p>
+            )}
           </div>
-}
+        </div>
+      ))}
+    </div>
+  </div>
+)}
           
          
         </div>
