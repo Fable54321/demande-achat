@@ -17,11 +17,9 @@ import { usePurchaseRequests, type Employee } from "../../Contexts/PurchaseReque
 import { getUrgencyFromExpectedDate } from "./getUrgencyFromExpectedDate"
 import { getMonthStart} from "./Utils/getMonthStartandDays"
 import DatePicker from "./DatePicker"
-import { buildPurchaseRequestFormData } from "./Utils/buildPurchaseRequestFormData"
 import {
   formatSelectedDate,
   getDateFromToday,
-  isValidIsoDate,
   monthFormatter,
   parseDateInputValue,
   toDateInputValue,
@@ -62,7 +60,7 @@ const Form = () => {
   const {
     getPurchaseRequestFormToken,
     createPurchaseRequest,
-    createPurchaseRequestBatch,
+    
     loading,
     employees,
   } =
@@ -81,7 +79,6 @@ const Form = () => {
     images: [] as File[],
     justification: "",
     link: "",
-    neededByDate: "",
     price: "",
     quantity: "1",
     quantityFormat: "",
@@ -99,6 +96,7 @@ const Form = () => {
   const [submitSuccess, setSubmitSuccess] = useState(false)
   const [companyWebsite, setCompanyWebsite] = useState("")
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
+  const [neededByDate, setNeededByDate] = useState("")
 
   const requestedItemCount = Number(purchaseItemCount) || 1
   const itemCount = hasMultipleItems ? requestedItemCount : 1
@@ -107,7 +105,6 @@ const Form = () => {
   const justification = currentItem.justification
   const price = currentItem.price
   const link = currentItem.link
-  const neededByDate = currentItem.neededByDate
   const quantity = currentItem.quantity
   const quantityFormat = currentItem.quantityFormat
   const images = currentItem.images
@@ -245,18 +242,7 @@ useEffect(() => {
   },[isDatePickerOpen])
 
   const urgency = getUrgencyFromExpectedDate(neededByDate)
-  const selectNeededByDate = (dateValue: string) => {
-    if (
-      !isValidIsoDate(dateValue) ||
-      parseDateInputValue(dateValue) < minNeededByDateObject
-    ) {
-      return
-    }
 
-    updateCurrentItem({ neededByDate: dateValue })
-    setCalendarMonth(getMonthStart(parseDateInputValue(dateValue)))
-    setIsDatePickerOpen(false)
-  }
 
 
 const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -327,6 +313,8 @@ const resetForm = () => {
   setIsDatePickerOpen(false)
 }
 
+
+
 const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
   e.preventDefault()
 
@@ -347,7 +335,22 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     return
   }
 
-  const validations = purchaseItems.slice(0, itemCount).map((item) =>
+  const activeItems = purchaseItems.slice(0, itemCount)
+
+  const totalImageCount = activeItems.reduce(
+    (total, item) => total + item.images.length,
+    0,
+  )
+
+  if (totalImageCount > MAX_IMAGES) {
+    setSubmitError(
+      `Vous pouvez joindre un maximum de ${MAX_IMAGES} photos par demande.`,
+    )
+    window.scrollTo({ top: 0, behavior: "smooth" })
+    return
+  }
+
+  const validations = activeItems.map((item) =>
     validatePurchaseRequestForm({
       name,
       description: item.description,
@@ -356,7 +359,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
       quantityFormat: item.quantityFormat,
       price: item.price,
       link: item.link,
-      neededByDate: item.neededByDate,
+      neededByDate,
       email,
       images: item.images,
       minNeededByDateObject,
@@ -367,11 +370,14 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 
   if (invalidItemIndex >= 0) {
     const validation = validations[invalidItemIndex]
+
     setCurrentItemIndex(invalidItemIndex)
     setSubmitError(
       validation.ok
         ? "Une demande est invalide."
-        : `${itemCount > 1 ? `Article ${invalidItemIndex + 1}: ` : ""}${validation.error}`,
+        : `${itemCount > 1 ? `Article ${invalidItemIndex + 1}: ` : ""}${
+            validation.error
+          }`,
     )
     window.scrollTo({ top: 0, behavior: "smooth" })
     return
@@ -381,59 +387,54 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     .filter((validation) => validation.ok)
     .map((validation) => validation.values)
 
-  const submittedName = validatedItems[0].name
-
-  const formData =
-    itemCount === 1
-      ? buildPurchaseRequestFormData({
-          description: validatedItems[0].description,
-          neededByDate: validatedItems[0].neededByDate,
-          images: purchaseItems[0].images,
-          justification: validatedItems[0].justification,
-          link: validatedItems[0].link,
-          name: validatedItems[0].name,
-          price: validatedItems[0].price,
-          quantity: validatedItems[0].quantity,
-          quantityFormat: validatedItems[0].quantityFormat,
-          email: validatedItems[0].email,
-        })
-      : new FormData()
-
-  if (itemCount > 1) {
-    formData.append("requested_by", submittedName)
-
-    if (validatedItems[0].email) {
-      formData.append("email", validatedItems[0].email)
-    }
-
-    formData.append(
-      "items",
-      JSON.stringify(
-        validatedItems.map((item, index) => ({
-          client_item_index: index,
-          description: item.description,
-          needed_by_date: item.neededByDate || null,
-          product_link: item.link || null,
-          quantity: item.quantity,
-          quantity_format: item.quantityFormat || null,
-          reason: item.justification || null,
-          requested_unit_price: item.price,
-        })),
-      ),
-    )
-
-    purchaseItems.slice(0, itemCount).forEach((item, itemIndex) => {
-      item.images.forEach((image) => {
-        formData.append(`pictures_${itemIndex}`, image, image.name)
-      })
-    })
+  if (validatedItems.length === 0) {
+    setSubmitError("La demande doit contenir au moins un article.")
+    window.scrollTo({ top: 0, behavior: "smooth" })
+    return
   }
 
+  const submittedName = validatedItems[0].name
+ 
+  
+  const formData = new FormData()
+
+  formData.append("requested_by", submittedName)
+
+  if (validatedItems[0].email) {
+    formData.append("email", validatedItems[0].email)
+  }
+
+ if(neededByDate) {
+    formData.append("needed_by_date", neededByDate)
+  }
+
+
+  formData.append("companyWebsite", companyWebsite)
+
+  formData.append(
+    "items",
+    JSON.stringify(
+      validatedItems.map((item, index) => ({
+        item_index: index + 1,
+        description: item.description,
+        reason: item.justification || null,
+        quantity: item.quantity,
+        quantity_format: item.quantityFormat || null,
+        requested_unit_price: item.price === null ? null : item.price,
+        requested_supplier: null,
+        product_link: item.link || null,
+      })),
+    ),
+  )
+
+  activeItems.forEach((item) => {
+    item.images.forEach((image) => {
+      formData.append("pictures", image, image.name)
+    })
+  })
+
   try {
-    const createdRequest =
-      itemCount === 1
-        ? await createPurchaseRequest(formData, formToken)
-        : await createPurchaseRequestBatch(formData, formToken)
+    const createdRequest = await createPurchaseRequest(formData, formToken)
 
     if (!createdRequest) {
       setSubmitError(
@@ -461,7 +462,6 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     setIsFormTokenExpired(false)
 
     setSubmittedByName(submittedName)
-
     resetForm()
 
     setSubmitError(null)
@@ -652,6 +652,8 @@ const successMessage = "Votre demande d'achat a bien été envoyée"
     </div>
   </Field>
 
+   
+
   {hasMultipleItems && (
     <Field icon={Hash} label="Nombre d'articles">
       <input
@@ -676,6 +678,116 @@ const successMessage = "Votre demande d'achat a bien été envoyée"
     </Field>
   )}
 </div>
+          </div>
+
+          <div className="rounded-xl border border-secondary/15 bg-tertiary/70 p-4 tablet:p-5">
+            <Field
+              helpText="Choisissez une date ou utilisez un raccourci."
+              icon={Calendar}
+              label="Date attendue"
+              optionnelle
+            >
+              <div className="mt-1 flex flex-col gap-4">
+                <div className="grid grid-cols-2 gap-2 tablet:grid-cols-4">
+                  {quickDateOptions.map((option) => (
+                    <button
+                      type="button"
+                      key={option.label}
+                      className={`h-10 rounded-lg border px-3 text-sm font-bold transition ${
+                        neededByDate === option.value
+                          ? "border-secondary bg-secondary text-white shadow-md shadow-secondary/20 "
+                          : "border-secondary/20 bg-white text-secondary hover:border-secondary/45 hover:bg-primary/10 hover:cursor-pointer"
+                      }`}
+                      onClick={() => setNeededByDate(option.value)}
+                      aria-pressed={neededByDate === option.value}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex flex-col gap-2 tablet:flex-row tablet:items-center">
+                  <input
+                    type="hidden"
+                    name="needed_by_date"
+                    value={neededByDate}
+                  />
+{/* DATEPICKER */}
+                  <div className="relative tablet:flex-1" ref={datePickerRef}>
+                    <button
+                      type="button"
+                      id="neededByDate"
+                      className={`${fieldControlClass} flex min-h-12 items-center justify-between gap-3 text-left`}
+                      onClick={() => setIsDatePickerOpen((isOpen) => !isOpen)}
+                      aria-expanded={isDatePickerOpen}
+                      aria-haspopup="dialog"
+                    >
+                      <span
+                        className={
+                          selectedDateLabel ? "text-slate-900" : "text-slate-400"
+                        }
+                      >
+                        {selectedDateLabel || "Choisir une date"}
+                      </span>
+                      <Calendar
+                        className="shrink-0 text-secondary"
+                        size={18}
+                        aria-hidden="true"
+                      />
+                    </button>
+
+                    {isDatePickerOpen && (
+                      <DatePicker 
+                      setCalendarMonth={setCalendarMonth}
+                      calendarMonth={calendarMonth}
+                      monthFormatter={monthFormatter}
+                      selectedDate={neededByDate}
+                      minDate={minNeededByDateObject}
+                      selectDate={setNeededByDate}
+                      toDateInputValue={toDateInputValue}
+                      />
+                    )}
+                  </div>
+
+                  {neededByDate && (
+                    <button
+                      type="button"
+                      className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-secondary/25 bg-white px-4 text-sm font-bold text-secondary transition hover:bg-secondary hover:text-white"
+                      onClick={() => {
+                        setNeededByDate("")
+                        setIsDatePickerOpen(false)
+                      }}
+                      aria-label="Effacer la date sélectionnée"
+                    >
+                      <X size={18} aria-hidden="true" />
+                      Effacer
+                    </button>
+                  )}
+                </div>
+
+                <div className="grid gap-3 tablet:grid-cols-[1fr_auto] tablet:items-center">
+                  <p
+                    className="min-h-6 text-sm font-semibold text-slate-700"
+                    aria-live="polite"
+                  >
+                    {selectedDateLabel
+                      ? `Date requise : ${selectedDateLabel}`
+                      : "Aucune date requise choisie"}
+                  </p>
+
+                  {urgency && (
+                    <div className="rounded-lg border border-secondary/15 bg-white px-3 py-2 text-sm shadow-sm">
+                      <span className="font-bold text-secondary">
+                        {urgency.label}
+                      </span>
+                      <span className="ml-2 text-slate-500">
+                        {urgency.message}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </Field>
           </div>
 
           <div className="flex flex-col gap-3 rounded-lg border border-secondary/15 bg-slate-50 px-4 py-3 tablet:flex-row tablet:items-center tablet:justify-between">
@@ -920,115 +1032,7 @@ const successMessage = "Votre demande d'achat a bien été envoyée"
   </div>
 </Field>
 
-          <div className="rounded-xl border border-secondary/15 bg-tertiary/70 p-4 tablet:p-5">
-            <Field
-              helpText="Choisissez une date ou utilisez un raccourci."
-              icon={Calendar}
-              label="Date attendue"
-              optional
-            >
-              <div className="mt-1 flex flex-col gap-4">
-                <div className="grid grid-cols-2 gap-2 tablet:grid-cols-4">
-                  {quickDateOptions.map((option) => (
-                    <button
-                      type="button"
-                      key={option.label}
-                      className={`h-10 rounded-lg border px-3 text-sm font-bold transition ${
-                        neededByDate === option.value
-                          ? "border-secondary bg-secondary text-white shadow-md shadow-secondary/20 "
-                          : "border-secondary/20 bg-white text-secondary hover:border-secondary/45 hover:bg-primary/10 hover:cursor-pointer"
-                      }`}
-                      onClick={() => selectNeededByDate(option.value)}
-                      aria-pressed={neededByDate === option.value}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="flex flex-col gap-2 tablet:flex-row tablet:items-center">
-                  <input
-                    type="hidden"
-                    name="needed_by_date"
-                    value={neededByDate}
-                  />
-{/* DATEPICKER */}
-                  <div className="relative tablet:flex-1" ref={datePickerRef}>
-                    <button
-                      type="button"
-                      id="neededByDate"
-                      className={`${fieldControlClass} flex min-h-12 items-center justify-between gap-3 text-left`}
-                      onClick={() => setIsDatePickerOpen((isOpen) => !isOpen)}
-                      aria-expanded={isDatePickerOpen}
-                      aria-haspopup="dialog"
-                    >
-                      <span
-                        className={
-                          selectedDateLabel ? "text-slate-900" : "text-slate-400"
-                        }
-                      >
-                        {selectedDateLabel || "Choisir une date"}
-                      </span>
-                      <Calendar
-                        className="shrink-0 text-secondary"
-                        size={18}
-                        aria-hidden="true"
-                      />
-                    </button>
-
-                    {isDatePickerOpen && (
-                      <DatePicker 
-                      setCalendarMonth={setCalendarMonth}
-                      calendarMonth={calendarMonth}
-                      monthFormatter={monthFormatter}
-                      selectedDate={neededByDate}
-                      minDate={minNeededByDateObject}
-                      selectDate={selectNeededByDate}
-                      toDateInputValue={toDateInputValue}
-                      />
-                    )}
-                  </div>
-
-                  {neededByDate && (
-                    <button
-                      type="button"
-                      className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-secondary/25 bg-white px-4 text-sm font-bold text-secondary transition hover:bg-secondary hover:text-white"
-                      onClick={() => {
-                        updateCurrentItem({ neededByDate: "" })
-                        setIsDatePickerOpen(false)
-                      }}
-                      aria-label="Effacer la date sélectionnée"
-                    >
-                      <X size={18} aria-hidden="true" />
-                      Effacer
-                    </button>
-                  )}
-                </div>
-
-                <div className="grid gap-3 tablet:grid-cols-[1fr_auto] tablet:items-center">
-                  <p
-                    className="min-h-6 text-sm font-semibold text-slate-700"
-                    aria-live="polite"
-                  >
-                    {selectedDateLabel
-                      ? `Date requise : ${selectedDateLabel}`
-                      : "Aucune date requise choisie"}
-                  </p>
-
-                  {urgency && (
-                    <div className="rounded-lg border border-secondary/15 bg-white px-3 py-2 text-sm shadow-sm">
-                      <span className="font-bold text-secondary">
-                        {urgency.label}
-                      </span>
-                      <span className="ml-2 text-slate-500">
-                        {urgency.message}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </Field>
-          </div>
+         
         </div>
 
         <div className="flex flex-col gap-3 border-t border-secondary/10 bg-slate-50 px-5 py-4 tablet:flex-row tablet:items-center tablet:justify-between tablet:px-8">
@@ -1080,7 +1084,7 @@ const successMessage = "Votre demande d'achat a bien été envoyée"
             {loading
               ? "Envoi en cours..."
               : itemCount > 1
-                ? `Soumettre ${itemCount} demandes`
+                ? `Soumettre ${itemCount} articles`
                 : "Soumettre la demande"}
           </button>
         </div>

@@ -13,7 +13,7 @@ export type PurchaseRequestStatus =
   | "pending_buyer_validation"
   | "needs_requester_info"
   | "pending_admin_approval"
-  | "approved"
+  | "admin_on_wait"
   | "rejected"
   | "ready_to_purchase"
   | "purchased"
@@ -24,53 +24,73 @@ interface PurchaseRequestFormTokenResponse {
   expires_at: string
 }
 
-export interface PurchaseRequest {
+export interface PurchaseRequestItem {
   id: number
+  purchase_request_id: number
+  item_index: number
 
-  requested_by: string
-requested_at: string
+  description: string
+  reason: string | null
 
-description: string
-quantity: number
-quantity_format: string
-reason: string | null
-
-  urgency: "normal" | "priority" | "urgent" | string | null
-  needed_by_date: string | null
+  quantity: number
+  quantity_format: string | null
 
   requested_unit_price: number | null
   requested_total_price: number | null
-  buyer_confirmed_unit_price: number | null
-  buyer_confirmed_total_price: number | null
-  final_unit_price: number | null
-  final_total_price: number | null
-
-  request_email: string | null
-
   requested_supplier: string | null
-  buyer_confirmed_supplier: string | null
-  final_supplier?: string | null
   product_link: string | null
 
+  buyer_confirmed_unit_price: number | null
+  buyer_confirmed_total_price: number | null
+  buyer_confirmed_supplier: string | null
+
+  status: PurchaseRequestStatus | string
+
+  created_at: string
+  updated_at: string
+}
+
+export interface PurchaseRequest {
+  id: number
+
+  request_reference: string
+  request_year: number
+  request_month: number
+  request_month_sequence: number
+
+  requested_by: string
+  requester_email: string | null
+  requested_at: string
+
   status: PurchaseRequestStatus
+
+  urgency: "normal" | "priority" | "urgent" | string | null
+  needed_by_date: string | null
+  expected_date: string | null
+  date_changed: boolean
 
   buyer_user_id: number | null
   buyer_validated_at: string | null
   buyer_note: string | null
+  buyer_email: string | null
 
   admin_user_id: number | null
+  admin_decision: string | null
   admin_decision_at: string | null
   admin_note: string | null
-
-  purchased_by_user_id: number | null
-  purchased_at: string | null
-  purchase_reference: string | null
-  purchase_note: string | null
+  admin_email: string | null
 
   rejection_reason: string | null
 
+  direct_approval_requested: boolean
+  direct_approval_approver: "Ricardo" | "Michelle" | null
+  direct_approval_requested_at: string | null
+
+  picture_keys: string[]
+
   created_at: string
   updated_at: string
+
   buyer_name?: string | null
   buyer_surname?: string | null
   admin_name?: string | null
@@ -78,25 +98,34 @@ reason: string | null
   purchased_by_name?: string | null
   purchased_by_surname?: string | null
 
+  items: PurchaseRequestItem[]
 }
 
-export interface CreatePurchaseRequestPayload {
-  requested_by: string
+export interface CreatePurchaseRequestItemPayload {
   description: string
-  quantity?: number
+  quantity: number
   quantity_format?: string | null
   reason?: string | null
   requested_unit_price?: number | null
   requested_supplier?: string | null
   product_link?: string | null
+}
+
+export interface CreatePurchaseRequestPayload {
+  requested_by: string
+  requester_email?: string | null
   needed_by_date?: string | null
-  email?: string | null
+  items: CreatePurchaseRequestItemPayload[]
+}
+
+export interface BuyerValidationItemPayload {
+  id: number
+  buyer_confirmed_unit_price?: number | null
+  buyer_confirmed_supplier?: string | null
 }
 
 export interface BuyerValidationPayload {
   buyer_user_id?: number | null
-  buyer_confirmed_unit_price?: number | null
-  buyer_confirmed_supplier?: string | null
   expected_date?: string | null
   buyer_note?: string | null
   direct_approval_requested?: boolean
@@ -104,30 +133,22 @@ export interface BuyerValidationPayload {
   needs_requester_info?: boolean
   reject?: boolean
   rejection_reason?: string | null
-}
-
-export interface AdminDecisionPayload {
-  decision: "approved" | "on_wait" | "rejected"
-  admin_note?: string | null
-  rejection_reason?: string | null
+  items?: BuyerValidationItemPayload[]
 }
 
 export interface Employee {
   id: number
-  username: string
   name: string
-  surname: string
-  email: string
-  role: string
-  is_office: boolean
+  surname?: string | null
+  email?: string | null
+  is_office?: boolean
 }
 
-interface EmployeeListResponse {
-  success: boolean
+export interface EmployeeListResponse {
   users: Employee[]
 }
 
-type TokenedPurchaseRequestReadRoute =
+export type TokenedPurchaseRequestReadRoute =
   | "buyer-validation"
   | "validation-prix"
   | "admin-decision"
@@ -135,12 +156,10 @@ type TokenedPurchaseRequestReadRoute =
   | "mark-purchased"
   | "acheter"
 
-export interface MarkPurchasedPayload {
-  purchased_by_user_id: number
-  final_unit_price?: number | null
-  final_supplier?: string | null
-  purchase_reference?: string | null
-  purchase_note?: string | null
+export interface AdminDecisionPayload {
+  decision: "approved" | "on_wait" | "rejected"
+  admin_note?: string | null
+  rejection_reason?: string | null
 }
 
 interface PurchaseRequestsContextType {
@@ -148,44 +167,48 @@ interface PurchaseRequestsContextType {
   selectedPurchaseRequest: PurchaseRequest | null
   loading: boolean
   error: string | null
+  employees: Employee[]
 
   fetchPurchaseRequests: (status?: PurchaseRequestStatus) => Promise<void>
   fetchPurchaseRequestById: (id: number) => Promise<PurchaseRequest | null>
-  fetchPurchaseRequestByToken: (
+
+  getPurchaseRequestFormToken: () => Promise<PurchaseRequestFormTokenResponse | null>
+
+  getPurchaseRequestByToken: (
     id: number,
     token: string,
     route: TokenedPurchaseRequestReadRoute
   ) => Promise<PurchaseRequest | null>
-getPurchaseRequestFormToken: () => Promise<PurchaseRequestFormTokenResponse | null>
-createPurchaseRequest: (
-  formData: FormData,
-  formToken: string
-) => Promise<PurchaseRequest | null>
-createPurchaseRequestBatch: (
-  formData: FormData,
-  formToken: string
-) => Promise<PurchaseRequest[] | null>
+
+  createPurchaseRequest: (
+    formData: FormData,
+    formToken: string
+  ) => Promise<PurchaseRequest | null>
+
   validateBuyerPrice: (
     id: number,
     token: string,
     payload: BuyerValidationPayload
   ) => Promise<PurchaseRequest | null>
+
   saveAdminDecision: (
     id: number,
     token: string,
     payload: AdminDecisionPayload
   ) => Promise<PurchaseRequest | null>
+
   markPurchaseRequestAsPurchased: (
     id: number,
     token: string,
     formData: FormData
   ) => Promise<PurchaseRequest | null>
+
   cancelPurchaseRequest: (
     id: number,
     rejection_reason?: string
   ) => Promise<PurchaseRequest | null>
+
   clearSelectedPurchaseRequest: () => void
-employees: Employee[] 
 }
 
 const PurchaseRequestsContext = createContext<
@@ -281,35 +304,41 @@ export const PurchaseRequestsProvider = ({
     }
   }, [])
 
-  const fetchPurchaseRequestByToken = useCallback(
-    async (id: number, token: string, route: TokenedPurchaseRequestReadRoute) => {
-      try {
-        setLoading(true)
-        setError(null)
-        setSelectedPurchaseRequest(null)
 
-        const data = await request<PurchaseRequest>(
-          `/purchase-request/${id}/${route}/${encodeURIComponent(token)}`
-        )
 
-        setSelectedPurchaseRequest(data)
+const getPurchaseRequestByToken = useCallback(
+  async (
+    id: number,
+    token: string,
+    route: TokenedPurchaseRequestReadRoute
+  ) => {
+    try {
+      setLoading(true)
+      setError(null)
+      setSelectedPurchaseRequest(null)
 
-        return data
-      } catch (error) {
-        const message =
-          error instanceof Error
-            ? error.message
-            : "Lien invalide, expiré ou déjà utilisé"
+      const data = await request<PurchaseRequest>(
+        `/purchase-request/${id}/${route}/${encodeURIComponent(token)}`
+      )
 
-        setSelectedPurchaseRequest(null)
-        setError(message)
-        return null
-      } finally {
-        setLoading(false)
-      }
-    },
-    []
-  )
+      setSelectedPurchaseRequest(data)
+
+      return data
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Lien invalide, expiré ou déjà utilisé"
+
+      setSelectedPurchaseRequest(null)
+      setError(message)
+      return null
+    } finally {
+      setLoading(false)
+    }
+  },
+  []
+)
 
 
 useEffect(() => {
@@ -400,37 +429,7 @@ const createPurchaseRequest = useCallback(
   []
 )
 
-const createPurchaseRequestBatch = useCallback(
-  async (formData: FormData, formToken: string) => {
-    try {
-      setLoading(true)
-      setError(null)
 
-      const data = await request<PurchaseRequest[]>("/purchase-request/batch", {
-        method: "POST",
-        headers: {
-          "x-purchase-request-form-token": formToken,
-        },
-        body: formData,
-      })
-
-      setPurchaseRequests((prev) => [...data, ...prev])
-
-      return data
-    } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Erreur lors de la creation des demandes d'achat"
-
-      setError(message)
-      return null
-    } finally {
-      setLoading(false)
-    }
-  },
-  []
-)
 
   const validateBuyerPrice = useCallback(
   async (id: number, token: string, payload: BuyerValidationPayload) => {
@@ -592,23 +591,22 @@ const markPurchaseRequestAsPurchased = useCallback(
 
   return (
     <PurchaseRequestsContext.Provider
-   value={{
+value={{
   purchaseRequests,
   selectedPurchaseRequest,
   loading,
   error,
+  employees,
   fetchPurchaseRequests,
   fetchPurchaseRequestById,
-  fetchPurchaseRequestByToken,
   getPurchaseRequestFormToken,
+  getPurchaseRequestByToken,
   createPurchaseRequest,
-  createPurchaseRequestBatch,
   validateBuyerPrice,
   saveAdminDecision,
   markPurchaseRequestAsPurchased,
   cancelPurchaseRequest,
   clearSelectedPurchaseRequest,
-  employees
 }}
     >
       {children}

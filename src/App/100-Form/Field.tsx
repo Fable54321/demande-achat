@@ -7,6 +7,7 @@ type FieldProps = {
   icon?: LucideIcon
   label: string
   optional?: boolean
+  optionnelle?: boolean
 }
 
 export const Field = ({
@@ -15,6 +16,7 @@ export const Field = ({
   icon: Icon,
   label,
   optional,
+  optionnelle,
 }: FieldProps) => (
   <div className="flex flex-col gap-4">
     <div className="flex items-start gap-3">
@@ -29,6 +31,9 @@ export const Field = ({
           {label}
           {optional && (
             <span className="ml-2 font-medium text-slate-500">Optionnel</span>
+          )}
+          {optionnelle && (
+            <span className="ml-2 font-medium text-slate-500">Optionnelle</span>
           )}
         </label>
 
