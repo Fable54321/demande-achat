@@ -2,7 +2,6 @@ import {
   AlertCircle,
   Calendar,
   CheckCircle2,
-  DollarSign,
   ExternalLink,
   Mail,
   PackageCheck,
@@ -45,8 +44,8 @@ const PriceConfirmation = () => {
     useState(false)
   const [submitSuccess, setSubmitSuccess] = useState(false)
 
-  const [confirmedUnitPrice, setConfirmedUnitPrice] = useState("")
-const [confirmedSupplier, setConfirmedSupplier] = useState("")
+const [confirmedUnitPrices, setConfirmedUnitPrices] = useState<Record<number, string>>({})
+const [confirmedSuppliers, setConfirmedSuppliers] = useState<Record<number, string>>({})
 const [buyerNote, setBuyerNote] = useState("")
 const [confirmedDate, setConfirmedDate] = useState("")
 const [isDatePickerOpen, setIsDatePickerOpen] = useState(false)
@@ -62,34 +61,30 @@ const [isOverlayOpen, setIsOverlayOpen] = useState(false);
   token: string
 }>()
 
-  const {
-    error,
-    fetchPurchaseRequestByToken,
-    selectedPurchaseRequest,
-    validateBuyerPrice,
-    loading,
-  } = usePurchaseRequests();
+const {
+  error,
+  getPurchaseRequestByToken,
+  selectedPurchaseRequest,
+  validateBuyerPrice,
+  loading,
+} = usePurchaseRequests()
 
-// eslint-disable-next-line react-hooks/exhaustive-deps
+
 useEffect(() => {
   if (!id || !token) return
 
-  fetchPurchaseRequestByToken(Number(id), token, "validation-prix")
-}, [fetchPurchaseRequestByToken, id, token]);
+  getPurchaseRequestByToken(Number(id), token, "validation-prix")
+}, [getPurchaseRequestByToken, id, token])
 
-useEffect(()=> {console.log(selectedPurchaseRequest)}, [selectedPurchaseRequest]);
+
 
 const email = useMemo(() => {
-
-  if(!selectedPurchaseRequest) {
-    return
+  if (!selectedPurchaseRequest?.requester_email) {
+    return null
   }
 
-  if (selectedPurchaseRequest.request_email) {
-    return selectedPurchaseRequest.request_email
-  }
-  return null
-},[selectedPurchaseRequest]);
+  return selectedPurchaseRequest.requester_email
+}, [selectedPurchaseRequest])
 
 const minExpectedDate = getDateFromToday(0)
 const minExpectedDateObject = parseDateInputValue(minExpectedDate)
@@ -102,17 +97,69 @@ const neededByDate =
   )?.needed_by_date?.slice(0, 10) ?? null
 const neededByDateLabel = neededByDate ? formatSelectedDate(neededByDate) : null
 
-const existingUnitPrice = selectedPurchaseRequest?.requested_unit_price ?? null
-const finalConfirmedUnitPrice =
-  confirmedUnitPrice.trim() === ""
-    ? existingUnitPrice
-    : Number(confirmedUnitPrice)
-const finalConfirmedTotalPrice =
-  finalConfirmedUnitPrice === null || Number.isNaN(finalConfirmedUnitPrice)
-    ? selectedPurchaseRequest?.requested_total_price ?? null
-    : finalConfirmedUnitPrice * (selectedPurchaseRequest?.quantity ?? 1)
-const canRequestDirectApproval =
-  finalConfirmedTotalPrice !== null && finalConfirmedTotalPrice < 200
+const purchaseItems = selectedPurchaseRequest?.items ?? []
+
+const getItemQuantityLabel = (item: (typeof purchaseItems)[number]) => {
+  const quantity = item.quantity ?? "Non indiquée"
+  const format = item.quantity_format?.trim()
+
+  return format ? `${quantity} ${format}` : String(quantity)
+}
+
+const getItemNumberValue = (value: unknown) => {
+  const numberValue = Number(value)
+
+  return Number.isFinite(numberValue) ? numberValue : null
+}
+
+const getConfirmedUnitPriceForItem = (item: (typeof purchaseItems)[number]) => {
+  const typedValue = confirmedUnitPrices[item.id]?.trim()
+
+  if (typedValue) {
+    const typedNumber = Number(typedValue)
+
+    return Number.isFinite(typedNumber) ? typedNumber : null
+  }
+
+  return (
+    getItemNumberValue(item.buyer_confirmed_unit_price) ??
+    getItemNumberValue(item.requested_unit_price)
+  )
+}
+
+const getConfirmedSupplierForItem = (item: (typeof purchaseItems)[number]) => {
+  const typedValue = confirmedSuppliers[item.id]?.trim()
+
+  return (
+    typedValue ||
+    item.buyer_confirmed_supplier ||
+    item.requested_supplier ||
+    null
+  )
+}
+
+const requestedTotal = purchaseItems.reduce((total, item) => {
+  const itemTotal = getItemNumberValue(item.requested_total_price)
+
+  return itemTotal === null ? total : total + itemTotal
+}, 0)
+
+const confirmedTotal = purchaseItems.reduce((total, item) => {
+  const confirmedUnitPrice = getConfirmedUnitPriceForItem(item)
+  const quantity = getItemNumberValue(item.quantity) ?? 0
+
+  if (confirmedUnitPrice === null) {
+    return total
+  }
+
+  return total + confirmedUnitPrice * quantity
+}, 0)
+
+const hasConfirmedTotal = purchaseItems.length > 0
+
+const canRequestDirectApproval = hasConfirmedTotal && confirmedTotal < 200
+
+
 
 useEffect(() => {
   if (!canRequestDirectApproval) {
@@ -181,14 +228,17 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
   if (!selectedPurchaseRequest || !id || !token) return
 
 const payload = {
-  buyer_user_id: 1, // temporary, or your buyer user id
-  buyer_confirmed_unit_price: finalConfirmedUnitPrice,
-  buyer_confirmed_supplier: confirmedSupplier.trim() || null,
+  buyer_user_id: 1,
   expected_date: confirmedDate || null,
   buyer_note: buyerNote.trim() || null,
   direct_approval_requested:
     canRequestDirectApproval && directApprovalRequested && !!directApprovalApprover,
   direct_approval_approver: directApprovalApprover,
+  items: purchaseItems.map((item) => ({
+    id: item.id,
+    buyer_confirmed_unit_price: getConfirmedUnitPriceForItem(item),
+    buyer_confirmed_supplier: getConfirmedSupplierForItem(item),
+  })),
 }
 
   const updatedRequest = await validateBuyerPrice(Number(id), token, payload)
@@ -266,111 +316,185 @@ const successMessage = "la confirmation de prix a bien été envoyée"
           {selectedPurchaseRequest && 
           <>
           <div className="rounded-xl border border-secondary/15 bg-tertiary/70 p-4 tablet:p-5">
-            <div className="flex items-start gap-3">
-              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-secondary text-white shadow-sm shadow-secondary/20">
-                <PackageCheck size={22} aria-hidden="true" />
-              </span>
-              <div className=" min-w-0 flex flex-col gap-2">
-                <p className="font-bold text-black text-[1.1em]">Demande à vérifier</p>
-                
-                   
-                  {selectedPurchaseRequest?.description && <p className="mt-1 ml-2 leading-6 text-slate-900"><span className="font-bold">Produit:</span> <br/> {selectedPurchaseRequest.description}</p>}
-                  {selectedPurchaseRequest?.product_link && (
-                    <div className="mt-1 ml-2 leading-6 text-slate-900">
-                      <p className="font-bold">Lien vers le produit:</p>
-                      <a
-                        href={selectedPurchaseRequest.product_link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mt-1 inline-flex max-w-full items-center gap-2 rounded-lg border border-secondary/15 bg-white px-3 py-2 text-sm font-bold text-secondary shadow-sm transition hover:border-secondary/35 hover:bg-primary/10"
-                      >
-                        <ExternalLink size={16} className="shrink-0" aria-hidden="true" />
-                        <span className="truncate">Voir le produit</span>
-                      </a>
-                    </div>
-                  )}
-                
-                {selectedPurchaseRequest?.reason && <p className="mt-1 ml-2 leading-6 text-slate-900" ><span className="font-bold">Justification:</span> <br/> {selectedPurchaseRequest.reason}</p>}
-              </div>
+  <div className="flex items-start gap-3">
+    <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-secondary text-white shadow-sm shadow-secondary/20">
+      <PackageCheck size={22} aria-hidden="true" />
+    </span>
+
+    <div className="min-w-0 flex flex-1 flex-col gap-2">
+      <p className="font-bold text-black text-[1.1em]">Demande à vérifier</p>
+
+      <p className="text-sm text-slate-700">
+        Demande #{selectedPurchaseRequest.request_reference}
+      </p>
+
+      <p className="text-sm text-slate-700">
+        {purchaseItems.length} article{purchaseItems.length > 1 ? "s" : ""} à valider
+      </p>
+    </div>
+  </div>
+
+  <dl className="mt-5 grid gap-3 text-sm tablet:grid-cols-3">
+    <div className="rounded-lg border border-secondary/15 bg-white px-3 py-2 shadow-sm">
+      <dt className="flex items-center gap-2 font-bold text-secondary">
+        <User size={16} aria-hidden="true" />
+        Demandeur
+      </dt>
+      <dd className="mt-1 text-slate-700">
+        {selectedPurchaseRequest.requested_by || "Non indiqué"}
+      </dd>
+    </div>
+
+    <div className="rounded-lg border border-secondary/15 bg-white px-3 py-2 shadow-sm">
+      <dt className="font-bold text-secondary">Total estimé</dt>
+      <dd className="mt-1 text-slate-700">
+        {formatCurrency(requestedTotal)}
+      </dd>
+    </div>
+
+    <div className="rounded-lg border border-secondary/15 bg-white px-3 py-2 shadow-sm">
+      <dt className="font-bold text-secondary">Total confirmé</dt>
+      <dd className="mt-1 text-slate-700">
+        {formatCurrency(confirmedTotal)}
+      </dd>
+    </div>
+  </dl>
+
+  <div className="mt-5 flex flex-col gap-4">
+    {purchaseItems.map((item) => (
+      <div
+        key={item.id}
+        className="rounded-xl border border-secondary/15 bg-white p-4 shadow-sm"
+      >
+        <div className="flex flex-col gap-2">
+          <p className="text-sm font-black uppercase tracking-[0.12em] text-secondary">
+            Article {item.item_index}
+          </p>
+
+          <p className="text-slate-900">
+            <span className="font-bold">Produit:</span>
+            <br />
+            {item.description || "Non indiqué"}
+          </p>
+
+          {item.reason && (
+            <p className="text-slate-900">
+              <span className="font-bold">Justification:</span>
+              <br />
+              {item.reason}
+            </p>
+          )}
+
+          {item.product_link && (
+            <div className="text-slate-900">
+              <p className="font-bold">Lien vers le produit:</p>
+              <a
+                href={item.product_link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-1 inline-flex max-w-full items-center gap-2 rounded-lg border border-secondary/15 bg-white px-3 py-2 text-sm font-bold text-secondary shadow-sm transition hover:border-secondary/35 hover:bg-primary/10"
+              >
+                <ExternalLink size={16} className="shrink-0" aria-hidden="true" />
+                <span className="truncate">Voir le produit</span>
+              </a>
+            </div>
+          )}
+
+          <dl className="mt-2 grid gap-3 text-sm tablet:grid-cols-3">
+            <div className="rounded-lg border border-secondary/10 bg-tertiary/50 px-3 py-2">
+              <dt className="font-bold text-secondary">Quantité</dt>
+              <dd className="mt-1 text-slate-700">{getItemQuantityLabel(item)}</dd>
             </div>
 
-            <dl className="mt-5 grid gap-3 text-sm tablet:grid-cols-4">
-              <div className="rounded-lg border border-secondary/15 bg-white px-3 py-2 shadow-sm">
-                <dt className="flex items-center gap-2 font-bold text-secondary">
-                  <User size={16} aria-hidden="true" />
-                  Demandeur
-                </dt>
-                <dd className="mt-1 text-slate-700">
-                  {selectedPurchaseRequest?.requested_by && selectedPurchaseRequest.requested_by}
-                </dd>
-              </div>
-              <div className="rounded-lg border border-secondary/15 bg-white px-3 py-2 shadow-sm">
-                <dt className="font-bold text-secondary">Quantité</dt>
-                <dd className="mt-1 text-slate-700">
-                  {selectedPurchaseRequest?.quantity && selectedPurchaseRequest.quantity} {" " +selectedPurchaseRequest.quantity_format && selectedPurchaseRequest.quantity_format}
-                </dd>
-              </div>
-              <div className="rounded-lg border border-secondary/15 bg-white px-3 py-2 shadow-sm">
-                <dt className="flex items-center gap-2 font-bold text-secondary">
-                  <DollarSign size={16} aria-hidden="true" />
-                  Prix unitaire
-                </dt>
-                <dd className="mt-1 text-slate-700">
-                  { selectedPurchaseRequest?.requested_unit_price && formatCurrency(selectedPurchaseRequest.requested_unit_price)}
-                </dd>
-              </div>
-              <div className="rounded-lg border border-secondary/15 bg-white px-3 py-2 shadow-sm">
-                <dt className="font-bold text-secondary">Total</dt>
-                <dd className="mt-1 text-slate-700">
-                  {selectedPurchaseRequest?.requested_total_price &&   formatCurrency(selectedPurchaseRequest.requested_total_price)}
-                </dd>
-              </div>
-            </dl>
-          </div>
-          <div className="grid gap-4 tablet:grid-cols-2">
-<div className="flex items-start gap-3 rounded-lg border border-secondary/15 bg-tertiary/70 px-4 py-3 text-sm leading-6 text-slate-600 tablet:col-span-2">
-  <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-secondary/10 text-secondary">
-    i
-  </span>
+            <div className="rounded-lg border border-secondary/10 bg-tertiary/50 px-3 py-2">
+              <dt className="font-bold text-secondary">Prix unitaire demandé</dt>
+              <dd className="mt-1 text-slate-700">
+                {item.requested_unit_price === null
+                  ? "Non indiqué"
+                  : formatCurrency(Number(item.requested_unit_price))}
+              </dd>
+            </div>
 
-  <p>
-    La section ci-dessous n'est pas obligatoire, mais permet de garder en banque
-    certaines infos qui auraient déjà été trouvées.
-  </p>
+            <div className="rounded-lg border border-secondary/10 bg-tertiary/50 px-3 py-2">
+              <dt className="font-bold text-secondary">Total demandé</dt>
+              <dd className="mt-1 text-slate-700">
+                {item.requested_total_price === null
+                  ? "Non indiqué"
+                  : formatCurrency(Number(item.requested_total_price))}
+              </dd>
+            </div>
+          </dl>
+        </div>
+      </div>
+    ))}
+  </div>
 </div>
-
-  <label className="flex flex-col gap-2 text-sm font-bold text-slate-700">
-    Prix unitaire différent
-    <input
-      type="number"
-      min="0"
-      step="0.01"
-      value={confirmedUnitPrice}
-      onChange={(e) => setConfirmedUnitPrice(e.target.value)}
-      placeholder={
-        selectedPurchaseRequest?.requested_unit_price
-          ? String(selectedPurchaseRequest.requested_unit_price)
-          : "Ex: 25.00"
-      }
-      className="h-12 rounded-lg border border-secondary/20 bg-white px-3 text-sm font-semibold text-slate-800 shadow-sm outline-none transition focus:border-secondary focus:ring-4 focus:ring-primary/20"
-    />
-    <span className="text-xs font-normal text-slate-500">
-      Laissez vide pour confirmer le prix demandé.
+         <div className="grid gap-4">
+  <div className="flex items-start gap-3 rounded-lg border border-secondary/15 bg-tertiary/70 px-4 py-3 text-sm leading-6 text-slate-600">
+    <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-secondary/10 text-secondary">
+      i
     </span>
-  </label>
 
-  <label className="flex flex-col gap-2 text-sm font-bold text-slate-700">
-    Fournisseur potentiel trouvé
-    <input
-      type="text"
-      value={confirmedSupplier}
-      onChange={(e) => setConfirmedSupplier(e.target.value)}
-      placeholder="Optionnel"
-      className="h-12 rounded-lg border border-secondary/20 bg-white px-3 text-sm font-semibold text-slate-800 shadow-sm outline-none transition focus:border-secondary focus:ring-4 focus:ring-primary/20"
-    />
-  </label>
+    <p>
+      Les champs ci-dessous sont optionnels. Laissez le prix vide pour confirmer
+      le prix demandé pour l'article.
+    </p>
+  </div>
+
+  {purchaseItems.map((item) => (
+    <div
+      key={item.id}
+      className="rounded-xl border border-secondary/15 bg-white p-4 shadow-sm"
+    >
+      <p className="mb-3 font-black text-secondary">
+        Article {item.item_index}
+      </p>
+
+      <div className="grid gap-4 tablet:grid-cols-2">
+        <label className="flex flex-col gap-2 text-sm font-bold text-slate-700">
+          Prix unitaire différent
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            value={confirmedUnitPrices[item.id] ?? ""}
+            onChange={(e) =>
+              setConfirmedUnitPrices((prev) => ({
+                ...prev,
+                [item.id]: e.target.value,
+              }))
+            }
+            placeholder={
+              item.requested_unit_price !== null
+                ? String(item.requested_unit_price)
+                : "Ex: 25.00"
+            }
+            className="h-12 rounded-lg border border-secondary/20 bg-white px-3 text-sm font-semibold text-slate-800 shadow-sm outline-none transition focus:border-secondary focus:ring-4 focus:ring-primary/20"
+          />
+          <span className="text-xs font-normal text-slate-500">
+            Laissez vide pour confirmer le prix demandé.
+          </span>
+        </label>
+
+        <label className="flex flex-col gap-2 text-sm font-bold text-slate-700">
+          Fournisseur potentiel trouvé
+          <input
+            type="text"
+            value={confirmedSuppliers[item.id] ?? ""}
+            onChange={(e) =>
+              setConfirmedSuppliers((prev) => ({
+                ...prev,
+                [item.id]: e.target.value,
+              }))
+            }
+            placeholder={item.requested_supplier || "Optionnel"}
+            className="h-12 rounded-lg border border-secondary/20 bg-white px-3 text-sm font-semibold text-slate-800 shadow-sm outline-none transition focus:border-secondary focus:ring-4 focus:ring-primary/20"
+          />
+        </label>
+      </div>
+    </div>
+  ))}
 </div>
-
 <div className="flex flex-col gap-2 text-sm font-bold text-slate-700" ref={datePickerRef}>
   <span>Changement de la date</span>
   {neededByDateLabel && (
@@ -438,9 +562,8 @@ const successMessage = "la confirmation de prix a bien été envoyée"
     rows={3}
     className="rounded-lg border border-secondary/20 bg-white px-3 py-3 text-sm font-semibold text-slate-800 shadow-sm outline-none transition focus:border-secondary focus:ring-4 focus:ring-primary/20"
   />
-</label>
-        </>  
-          }
+</label> 
+          
 
           <label className="group flex cursor-pointer items-start gap-3 rounded-lg border border-secondary/15 bg-white px-4 py-3 text-sm text-slate-700 shadow-sm transition hover:border-secondary/35 hover:bg-primary/10">
             <input
@@ -467,8 +590,8 @@ const successMessage = "la confirmation de prix a bien été envoyée"
               </svg>
             </span>
             <span className="leading-6">
-              Je confirme que le prix proposé semble raisonnable pour le produit
-              demandé.
+              Je confirme que les prix proposés semblent raisonnables pour les produits
+              demandés.
             </span>
           </label>
 
@@ -536,6 +659,8 @@ const successMessage = "la confirmation de prix a bien été envoyée"
             )}
             </div>
           )}
+          </>
+          }
         </div>
 
         <div className="flex flex-col gap-4 border-t border-secondary/10 bg-slate-50 px-5 py-4 tablet:flex-row tablet:items-center tablet:justify-between tablet:px-8">
@@ -570,7 +695,7 @@ const successMessage = "la confirmation de prix a bien été envoyée"
               ? "Envoi en cours..."
               : directApprovalRequested
                 ? "Confirmer et approuver"
-                : "Confirmer le prix"}
+                : "Valider les informations"}
           </button>
         </div>  
 

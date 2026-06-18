@@ -108,6 +108,10 @@ const Form = () => {
   const quantity = currentItem.quantity
   const quantityFormat = currentItem.quantityFormat
   const images = currentItem.images
+  const totalImageCount = purchaseItems.reduce(
+    (total, item) => total + item.images.length,
+    0,
+  )
 
   const updateCurrentItem = (
     updates: Partial<ReturnType<typeof createEmptyItem>>,
@@ -135,6 +139,29 @@ const Form = () => {
     setCurrentItemIndex((index) => Math.min(index, safeCount - 1))
     setIsDatePickerOpen(false)
   }
+
+  const itemSwitchButtons = hasMultipleItems ? (
+    <div className="flex flex-wrap gap-2">
+      {purchaseItems.slice(0, itemCount).map((_, index) => (
+        <button
+          type="button"
+          key={index}
+          className={`h-9 min-w-9 rounded-lg border px-3 text-sm font-black transition ${
+            index === currentItemIndex
+              ? "border-secondary bg-secondary text-white shadow-sm"
+              : "border-secondary/20 bg-white text-secondary hover:bg-primary/10"
+          }`}
+          onClick={() => {
+            setCurrentItemIndex(index)
+            setIsDatePickerOpen(false)
+          }}
+          aria-label={`Aller a l'article ${index + 1}`}
+        >
+          {index + 1}
+        </button>
+      ))}
+    </div>
+  ) : null
 
 
   const officeWorkers = useMemo(
@@ -331,6 +358,12 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     setSubmitError(
       "Le formulaire a expiré. Rafraîchissez-le avant de soumettre la demande.",
     )
+    window.scrollTo({ top: 0, behavior: "smooth" })
+    return
+  }
+
+  if (purchaseItems.length > 10) {
+    setSubmitError("Vous ne pouvez pas soumettre plus de 10 articles par demande.")
     window.scrollTo({ top: 0, behavior: "smooth" })
     return
   }
@@ -792,7 +825,7 @@ const successMessage = "Votre demande d'achat a bien été envoyée"
 
           <div className="flex flex-col gap-3 rounded-lg border border-secondary/15 bg-slate-50 px-4 py-3 tablet:flex-row tablet:items-center tablet:justify-between">
             <div>
-              <p className="text-sm font-black text-secondary">
+              <p className="text-[1.2em] font-black text-secondary">
                 Article {currentItemIndex + 1}/{itemCount}
               </p>
               <p className="mt-1 text-sm text-slate-600">
@@ -801,26 +834,7 @@ const successMessage = "Votre demande d'achat a bien été envoyée"
             </div>
 
             {hasMultipleItems && (
-              <div className="flex flex-wrap gap-2">
-                {purchaseItems.slice(0, itemCount).map((_, index) => (
-                  <button
-                    type="button"
-                    key={index}
-                    className={`h-9 min-w-9 rounded-lg border px-3 text-sm font-black transition ${
-                      index === currentItemIndex
-                        ? "border-secondary bg-secondary text-white shadow-sm"
-                        : "border-secondary/20 bg-white text-secondary hover:bg-primary/10"
-                    }`}
-                    onClick={() => {
-                      setCurrentItemIndex(index)
-                      setIsDatePickerOpen(false)
-                    }}
-                    aria-label={`Aller a l'article ${index + 1}`}
-                  >
-                    {index + 1}
-                  </button>
-                ))}
-              </div>
+              itemSwitchButtons
             )}
           </div>
 
@@ -986,7 +1000,7 @@ const successMessage = "Votre demande d'achat a bien été envoyée"
         Ajouter des photos
       </span>
       <span className="mt-1 text-xs text-slate-500">
-        {images.length}/{MAX_IMAGES} sélectionnées · Maximum {MAX_IMAGE_SIZE_MB} MB par image
+        {totalImageCount}/{MAX_IMAGES} sélectionnées · Maximum {MAX_IMAGE_SIZE_MB} MB par image
       </span>
 
       <input
@@ -1037,33 +1051,37 @@ const successMessage = "Votre demande d'achat a bien été envoyée"
 
         <div className="flex flex-col gap-3 border-t border-secondary/10 bg-slate-50 px-5 py-4 tablet:flex-row tablet:items-center tablet:justify-between tablet:px-8">
           {hasMultipleItems ? (
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                disabled={currentItemIndex === 0}
-                className="inline-flex h-11 items-center justify-center rounded-lg border border-secondary/25 bg-white px-4 text-sm font-black text-secondary transition hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
-                onClick={() => {
-                  setCurrentItemIndex((index) => Math.max(index - 1, 0))
-                  setIsDatePickerOpen(false)
-                }}
-              >
-                Precedent
-              </button>
+            <div className="flex flex-col gap-3">
+              {itemSwitchButtons}
 
-              {currentItemIndex < itemCount - 1 && (
+              <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
-                  className="inline-flex h-11 items-center justify-center rounded-lg border border-secondary/25 bg-white px-4 text-sm font-black text-secondary transition hover:bg-primary/10"
+                  disabled={currentItemIndex === 0}
+                  className="inline-flex h-11 items-center justify-center rounded-lg border border-secondary/25 bg-white px-4 text-sm font-black text-secondary transition hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
                   onClick={() => {
-                    setCurrentItemIndex((index) =>
-                      Math.min(index + 1, itemCount - 1),
-                    )
+                    setCurrentItemIndex((index) => Math.max(index - 1, 0))
                     setIsDatePickerOpen(false)
                   }}
                 >
-                  Article suivant
+                  Precedent
                 </button>
-              )}
+
+                {currentItemIndex < itemCount - 1 && (
+                  <button
+                    type="button"
+                    className="inline-flex h-11 items-center justify-center rounded-lg border border-secondary/25 bg-white px-4 text-sm font-black text-secondary transition hover:bg-primary/10"
+                    onClick={() => {
+                      setCurrentItemIndex((index) =>
+                        Math.min(index + 1, itemCount - 1),
+                      )
+                      setIsDatePickerOpen(false)
+                    }}
+                  >
+                    Article suivant
+                  </button>
+                )}
+              </div>
             </div>
           ) : (
             <span />

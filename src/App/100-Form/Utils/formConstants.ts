@@ -10,7 +10,7 @@ export const MAX_QUANTITY_FORMAT_LENGTH = 80
 export const MAX_PRICE = 999999.99
 export const MAX_PURCHASE_ITEMS = 10
 
-export const MAX_IMAGES = 5
+export const MAX_IMAGES = 10
 export const MAX_IMAGE_SIZE_MB = 7
 export const MAX_IMAGE_SIZE_BYTES = MAX_IMAGE_SIZE_MB * 1024 * 1024
 export const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"]
