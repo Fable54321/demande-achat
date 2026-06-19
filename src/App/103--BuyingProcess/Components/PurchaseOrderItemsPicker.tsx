@@ -83,11 +83,11 @@ const PurchaseOrderItemsPicker = ({
       />
 
       <div>
-        <p className="font-semibold text-slate-900">
+        <p className="font-semibold text-lg text-slate-900">
           {requestItem.description}
         </p>
 
-        <p className="text-sm text-slate-600">
+        <p className="text-md text-slate-600">
           Quantité demandée: {requestItem.quantity}{" "}
           {requestItem.quantity_format ?? ""}
         </p>
@@ -105,8 +105,8 @@ const PurchaseOrderItemsPicker = ({
 
       {group.items.length > 0 && (
         <div className="overflow-x-auto rounded-xl border border-slate-200">
-          <table className="w-full min-w-200 text-left text-sm">
-            <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+          <table className="w-full min-w-200 text-left ">
+            <thead className="bg-slate-50 text-sm uppercase text-slate-500">
               <tr>
                 <th className="px-3 py-2">Code</th>
                 <th className="px-3 py-2">Description</th>

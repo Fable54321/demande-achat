@@ -74,7 +74,7 @@ const SupplierSelector = ({ group, suppliers, onChange }: Props) => {
     <div className="grid gap-4 md:grid-cols-2">
       <div ref={wrapperRef} className="relative md:col-span-2">
         <label className="block">
-          <span className="text-sm font-semibold text-slate-700">
+          <span className=" font-semibold text-slate-700">
             Fournisseur
           </span>
 
@@ -146,7 +146,7 @@ const SupplierSelector = ({ group, suppliers, onChange }: Props) => {
       </div>
 
       <label className="block md:col-span-2">
-        <span className="text-sm font-semibold text-slate-700">
+        <span className=" font-semibold text-slate-700">
           Adresse du fournisseur
         </span>
         <textarea
@@ -162,7 +162,7 @@ const SupplierSelector = ({ group, suppliers, onChange }: Props) => {
       </label>
 
       <label className="block">
-        <span className="text-sm font-semibold text-slate-700">
+        <span className=" font-semibold text-slate-700">
           Téléphone
         </span>
         <input

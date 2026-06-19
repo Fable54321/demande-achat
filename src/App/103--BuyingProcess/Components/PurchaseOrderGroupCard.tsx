@@ -33,7 +33,7 @@ const PurchaseOrderGroupCard = ({
   return (
     <section className="rounded-2xl bg-white p-5 shadow-sm">
       <div>
-        <h2 className="text-lg font-bold text-slate-900 mb-2">Articles à acheter</h2>
+        <h2 className="text-xl font-bold text-slate-900 mb-2">Articles à acheter</h2>
         <PurchaseOrderItemsPicker
           group={group}
           requestItems={requestItems}
@@ -43,7 +43,7 @@ const PurchaseOrderGroupCard = ({
         </div>
       <div className="mb-5 mt-8 flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-lg font-bold text-slate-900">
+          <h2 className="text-xl font-bold text-slate-900">
             Bon d'achat {purchaseMode === "partial" ? groupIndex + 1 : ""}
           </h2>
           <p className="mt-1 text-sm text-slate-600">
@@ -86,7 +86,7 @@ const PurchaseOrderGroupCard = ({
 
           <label className="block">
             <span className="text-sm font-semibold text-slate-700">
-              Date reçue
+              Date reçu
             </span>
             <input
               type="date"

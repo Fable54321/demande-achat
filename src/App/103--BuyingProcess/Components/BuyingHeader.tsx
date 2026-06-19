@@ -20,9 +20,7 @@ const BuyingHeader = ({ purchaseRequest }: Props) => {
           </p>
         </div>
 
-        <span className="rounded-full bg-tertiary px-3 py-1 text-sm font-semibold text-[#4B7312]">
-          {purchaseRequest.status}
-        </span>
+        
       </div>
     </header>
   )
