@@ -32,6 +32,12 @@ const PurchaseOrderGroupCard = ({
 }: Props) => {
   return (
     <section className="rounded-2xl bg-white p-5 shadow-sm">
+        <PurchaseOrderItemsPicker
+          group={group}
+          requestItems={requestItems}
+          selectedItemIdsInOtherGroups={selectedItemIdsInOtherGroups}
+          onChange={onChange}
+        />
       <div className="mb-5 flex items-start justify-between gap-4">
         <div>
           <h2 className="text-lg font-bold text-slate-900">
@@ -119,12 +125,7 @@ const PurchaseOrderGroupCard = ({
           />
         </label>
 
-        <PurchaseOrderItemsPicker
-          group={group}
-          requestItems={requestItems}
-          selectedItemIdsInOtherGroups={selectedItemIdsInOtherGroups}
-          onChange={onChange}
-        />
+      
       </div>
     </section>
   )
