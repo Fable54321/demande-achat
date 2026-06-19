@@ -32,13 +32,16 @@ const PurchaseOrderGroupCard = ({
 }: Props) => {
   return (
     <section className="rounded-2xl bg-white p-5 shadow-sm">
+      <div>
+        <h2 className="text-lg font-bold text-slate-900 mb-2">Articles à acheter</h2>
         <PurchaseOrderItemsPicker
           group={group}
           requestItems={requestItems}
           selectedItemIdsInOtherGroups={selectedItemIdsInOtherGroups}
           onChange={onChange}
         />
-      <div className="mb-5 flex items-start justify-between gap-4">
+        </div>
+      <div className="mb-5 mt-8 flex items-start justify-between gap-4">
         <div>
           <h2 className="text-lg font-bold text-slate-900">
             Bon d'achat {purchaseMode === "partial" ? groupIndex + 1 : ""}
@@ -83,15 +86,15 @@ const PurchaseOrderGroupCard = ({
 
           <label className="block">
             <span className="text-sm font-semibold text-slate-700">
-              Date demandée
+              Date reçue
             </span>
             <input
               type="date"
-              value={group.requested_delivery_date}
+              value={group.received_at}
               onChange={(event) =>
                 onChange({
                   ...group,
-                  requested_delivery_date: event.target.value,
+                  received_at: event.target.value,
                 })
               }
               className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2"
