@@ -16,6 +16,7 @@ export type PurchaseRequestStatus =
   | "admin_on_wait"
   | "rejected"
   | "ready_to_purchase"
+  | "partially_purchased"
   | "purchased"
   | "cancelled"
 
@@ -153,8 +154,6 @@ export type TokenedPurchaseRequestReadRoute =
   | "validation-prix"
   | "admin-decision"
   | "approbation-achat"
-  | "mark-purchased"
-  | "acheter"
 
 export interface AdminDecisionPayload {
   decision: "approved" | "on_wait" | "rejected"
@@ -197,11 +196,7 @@ interface PurchaseRequestsContextType {
     payload: AdminDecisionPayload
   ) => Promise<PurchaseRequest | null>
 
-  markPurchaseRequestAsPurchased: (
-    id: number,
-    token: string,
-    formData: FormData
-  ) => Promise<PurchaseRequest | null>
+ 
 
   cancelPurchaseRequest: (
     id: number,
@@ -507,43 +502,7 @@ const createPurchaseRequest = useCallback(
     []
   )
 
-const markPurchaseRequestAsPurchased = useCallback(
-  async (id: number, token: string, formData: FormData) => {
-    try {
-      setLoading(true)
-      setError(null)
 
-      const data = await request<PurchaseRequest>(
-          `/purchase-request/${id}/mark-purchased/${encodeURIComponent(token)}`,
-          {
-            method: "PATCH",
-            body: formData,
-          },
-        )
-
-      setPurchaseRequests((prev) =>
-        prev.map((request) => (request.id === id ? data : request)),
-      )
-
-      setSelectedPurchaseRequest((prev) =>
-        prev?.id === id ? data : prev,
-      )
-
-      return data
-    } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Erreur lors de la confirmation d'achat"
-
-      setError(message)
-      return null
-    } finally {
-      setLoading(false)
-    }
-  },
-  [],
-)
 
   const cancelPurchaseRequest = useCallback(
     async (id: number, rejection_reason?: string) => {
@@ -604,7 +563,7 @@ value={{
   createPurchaseRequest,
   validateBuyerPrice,
   saveAdminDecision,
-  markPurchaseRequestAsPurchased,
+  
   cancelPurchaseRequest,
   clearSelectedPurchaseRequest,
 }}

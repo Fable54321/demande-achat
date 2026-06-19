@@ -8,6 +8,7 @@ import { PurchaseRequestsProvider } from './Contexts/PurchaseRequestContext';
 import PriceConfirmation from './App/101--PriceConfirmation/PriceConfirmation';
 import AdminApproval from './App/102--AdminApproval/AdminApproval';
 import BuyingProcess from './App/103--BuyingProcess/BuyingProcess';
+import { BuyingProvider } from './Contexts/BuyingContext';
 
 
 const router = createBrowserRouter([
@@ -41,7 +42,9 @@ const router = createBrowserRouter([
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <PurchaseRequestsProvider>
+      <BuyingProvider>
       <RouterProvider router={router} />
+      </BuyingProvider>
     </PurchaseRequestsProvider>
   </StrictMode>,
 )
