@@ -97,16 +97,21 @@ const purchaseMode: PurchaseMode = useMemo(() => {
       return
     }
 
-    for (const group of activeGroups) {
-      const payload = buildCreatePurchaseOrderPayload(group, purchaseMode)
+   for (const [index, group] of activeGroups.entries()) {
+  const isLastGroup = index === activeGroups.length - 1
 
-      const result = await createPurchaseOrder(Number(id), token, payload)
+  const groupPurchaseMode =
+    purchaseMode === "full" && isLastGroup ? "full" : "partial"
 
-      if (!result) {
-        setSubmitError("Erreur lors de la création d'un bon d'achat.")
-        return
-      }
-    }
+  const payload = buildCreatePurchaseOrderPayload(group, groupPurchaseMode)
+
+  const result = await createPurchaseOrder(Number(id), token, payload)
+
+  if (!result) {
+    setSubmitError("Erreur lors de la création d'un bon d'achat.")
+    return
+  }
+}
 
     setSubmitSuccess(true)
   }

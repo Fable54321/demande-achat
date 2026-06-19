@@ -7,7 +7,7 @@ type Props = {
 const BuyingHeader = ({ purchaseRequest }: Props) => {
   return (
     <header className="rounded-2xl bg-white p-5 shadow-sm">
-      <p className="text-sm font-medium text-[#4B7312]">Bon d'achat</p>
+      <p className="text-sm font-medium text-[#4B7312]">Bon de commande</p>
 
       <div className="mt-1 flex flex-wrap items-end justify-between gap-3">
         <div>
