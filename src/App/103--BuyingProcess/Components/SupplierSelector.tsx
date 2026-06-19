@@ -174,18 +174,7 @@ const SupplierSelector = ({ group, suppliers, onChange }: Props) => {
         />
       </label>
 
-      <label className="block">
-        <span className="text-sm font-semibold text-slate-700">
-          Référence fournisseur
-        </span>
-        <input
-          value={group.supplier_reference}
-          onChange={(event) =>
-            onChange({ ...group, supplier_reference: event.target.value })
-          }
-          className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2"
-        />
-      </label>
+      
     </div>
   )
 }
