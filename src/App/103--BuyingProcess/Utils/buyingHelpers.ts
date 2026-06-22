@@ -12,16 +12,13 @@ export const createEmptyGroup = (): PurchaseOrderGroupForm => ({
   supplier_address_snapshot: "",
   supplier_phone: "",
 
-  supplier_reference: "",
   purchase_note: "",
 
   buyer_name: "",
   buyer_email: "",
 
   requested_delivery_date: "",
-  received_at: "",
-  invoice_number: "",
-  delivery_method: "supplier_delivery",
+  delivery_method: "Livré",
   shipping_address_snapshot: "",
   ordered_at: "",
   currency_code: "CAD",
@@ -38,8 +35,6 @@ export const createItemFormFromRequestItem = (
   item_code: "",
   item_description: item.description ?? "",
   ordered_unit: item.quantity_format ?? "",
-  number_of_pallets: "",
-  location: "",
 })
 
 export const toNullableText = (value: string) => {

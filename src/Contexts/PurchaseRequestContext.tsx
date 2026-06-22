@@ -344,7 +344,7 @@ useEffect(() => {
       setLoading(true)
       setError(null)
 
-      const data = await request<EmployeeListResponse>("/portal/list")
+      const data = await request<EmployeeListResponse>("/portal-unprotected/list")
 
       if (!cancelled) {
         setEmployees(data.users)

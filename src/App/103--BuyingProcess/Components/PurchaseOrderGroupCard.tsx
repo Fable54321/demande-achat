@@ -30,6 +30,8 @@ const PurchaseOrderGroupCard = ({
   onChange,
   onRemove,
 }: Props) => {
+  const deliveryMethodOptions = ["Livré", "Ramassé"]
+
   return (
     <section className="rounded-2xl bg-white p-5 shadow-sm">
       <div>
@@ -69,7 +71,7 @@ const PurchaseOrderGroupCard = ({
           onChange={onChange}
         />
 
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-1">
           <label className="block">
             <span className="text-sm font-semibold text-slate-700">
               Date commandé
@@ -84,36 +86,37 @@ const PurchaseOrderGroupCard = ({
             />
           </label>
 
-          <label className="block">
-            <span className="text-sm font-semibold text-slate-700">
-              Date reçu
-            </span>
-            <input
-              type="date"
-              value={group.received_at}
-              onChange={(event) =>
-                onChange({
-                  ...group,
-                  received_at: event.target.value,
-                })
-              }
-              className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2"
-            />
-          </label>
-
-          <label className="block">
-            <span className="text-sm font-semibold text-slate-700">
-              No facture
-            </span>
-            <input
-              value={group.invoice_number}
-              onChange={(event) =>
-                onChange({ ...group, invoice_number: event.target.value })
-              }
-              className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2"
-            />
-          </label>
         </div>
+
+        <label className="block">
+          <span className="text-sm font-semibold text-slate-700">
+            Méthode de livraison
+          </span>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {deliveryMethodOptions.map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => onChange({ ...group, delivery_method: option })}
+                className={`rounded-lg border px-3 py-2 text-sm font-semibold ${
+                  group.delivery_method === option
+                    ? "border-[#4B7312] bg-[#4B7312] text-white"
+                    : "border-slate-300 text-slate-700 hover:border-[#4B7312]"
+                }`}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+          <input
+            value={group.delivery_method}
+            onChange={(event) =>
+              onChange({ ...group, delivery_method: event.target.value })
+            }
+            placeholder="Autre méthode"
+            className="mt-2 w-full rounded-xl border border-slate-300 px-3 py-2"
+          />
+        </label>
 
         <label className="block">
           <span className="text-sm font-semibold text-slate-700">

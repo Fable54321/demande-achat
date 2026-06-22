@@ -87,10 +87,8 @@ export interface PurchaseOrderItemPayload {
 
   final_unit_price?: number | null
   item_code?: string | null
-  number_of_pallets?: number | null
   item_description?: string | null
   ordered_unit?: string | null
-  location?: string | null
 }
 
 export interface CreatePurchaseOrderPayload {
@@ -105,12 +103,9 @@ export interface CreatePurchaseOrderPayload {
   buyer_email?: string | null
 
   requested_delivery_date?: string | null
-  received_at?: string | null
-  invoice_number?: string | null
   delivery_method?: string | null
   shipping_address_snapshot?: string | null
 
-  supplier_reference?: string | null
   purchase_note?: string | null
   purchased_by_user_id: number
   ordered_at?: string | null

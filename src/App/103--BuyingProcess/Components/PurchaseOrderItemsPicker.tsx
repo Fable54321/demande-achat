@@ -113,8 +113,6 @@ const PurchaseOrderItemsPicker = ({
                 <th className="px-3 py-2">Quantité</th>
                 <th className="px-3 py-2">Unité</th>
                 <th className="px-3 py-2">Prix</th>
-                <th className="px-3 py-2">Nb pal.</th>
-                <th className="px-3 py-2">Localisation</th>
               </tr>
             </thead>
 
@@ -194,33 +192,6 @@ const PurchaseOrderItemsPicker = ({
                     />
                   </td>
 
-                  <td className="px-3 py-2">
-                    <input
-                      type="number"
-                      min="0"
-                      value={item.number_of_pallets}
-                      onChange={(event) =>
-                        updateItem(item.purchase_request_item_id, {
-                          ...item,
-                          number_of_pallets: event.target.value,
-                        })
-                      }
-                      className="w-24 rounded-lg border border-slate-300 px-2 py-1"
-                    />
-                  </td>
-
-                  <td className="px-3 py-2">
-                    <input
-                      value={item.location}
-                      onChange={(event) =>
-                        updateItem(item.purchase_request_item_id, {
-                          ...item,
-                          location: event.target.value,
-                        })
-                      }
-                      className="w-full rounded-lg border border-slate-300 px-2 py-1"
-                    />
-                  </td>
                 </tr>
               ))}
             </tbody>

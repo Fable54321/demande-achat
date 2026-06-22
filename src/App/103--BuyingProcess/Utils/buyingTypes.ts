@@ -8,8 +8,6 @@ export type PurchaseOrderItemForm = {
   item_code: string
   item_description: string
   ordered_unit: string
-  number_of_pallets: string
-  location: string
 }
 
 export type PurchaseOrderGroupForm = {
@@ -20,15 +18,12 @@ export type PurchaseOrderGroupForm = {
   supplier_address_snapshot: string
   supplier_phone: string
 
-  supplier_reference: string
   purchase_note: string
 
   buyer_name: string
   buyer_email: string
 
   requested_delivery_date: string
-  received_at: string
-  invoice_number: string
   delivery_method: string
   shipping_address_snapshot: string
   ordered_at: string

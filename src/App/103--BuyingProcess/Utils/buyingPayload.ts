@@ -17,12 +17,9 @@ export const buildCreatePurchaseOrderPayload = (
   buyer_email: toNullableText(group.buyer_email),
 
   requested_delivery_date: group.requested_delivery_date || null,
-  received_at: group.received_at || null,
-  invoice_number: toNullableText(group.invoice_number),
   delivery_method: toNullableText(group.delivery_method),
   shipping_address_snapshot: toNullableText(group.shipping_address_snapshot),
 
-  supplier_reference: toNullableText(group.supplier_reference),
   purchase_note: toNullableText(group.purchase_note),
 
   purchased_by_user_id: 1, // temporary
@@ -36,7 +33,5 @@ export const buildCreatePurchaseOrderPayload = (
     item_code: toNullableText(item.item_code),
     item_description: toNullableText(item.item_description),
     ordered_unit: toNullableText(item.ordered_unit),
-    number_of_pallets: toNullableNumber(item.number_of_pallets),
-    location: toNullableText(item.location),
   })),
 })
