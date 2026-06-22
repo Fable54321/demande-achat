@@ -90,7 +90,7 @@ const PurchaseOrderGroupCard = ({
 
         <label className="block">
           <span className="text-sm font-semibold text-slate-700">
-            Méthode de livraison
+            Méthode de transport
           </span>
           <div className="mt-2 flex flex-wrap gap-2">
             {deliveryMethodOptions.map((option) => (
