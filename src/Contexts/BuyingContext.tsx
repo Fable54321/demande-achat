@@ -16,6 +16,7 @@ export interface Supplier {
   name: string
   address_snapshot: string | null
   phone: string | null
+  supplier_phone?: string | null
   email: string | null
   contact_name: string | null
   city: string | null
@@ -55,6 +56,7 @@ export interface PurchaseOrder {
   invoice_number: string | null
   delivery_method: string | null
   shipping_address_snapshot: string | null
+  purchase_document_keys?: string[] | null
   currency_code: string
 
   status: string
@@ -118,6 +120,11 @@ export interface CreatePurchaseOrderResponse {
   purchase_request: PurchaseRequest
   purchase_order: PurchaseOrder
   purchase_order_items: PurchaseOrderItem[]
+  purchase_order_pdf_urls?: string[]
+  purchase_order_pdf?: {
+    key: string
+    url: string
+  }
 }
 
 interface BuyingContextType {
@@ -191,7 +198,7 @@ export const BuyingProvider = ({ children }: { children: ReactNode }) => {
         setError(null)
 
         const data = await request<PurchaseRequest>(
-          `/buying/${id}/acheter/${encodeURIComponent(token)}`,
+          `/buying/${id}/${encodeURIComponent(token)}`,
         )
 
         setBuyingRequest(data)
@@ -244,7 +251,7 @@ export const BuyingProvider = ({ children }: { children: ReactNode }) => {
         setError(null)
 
         const data = await request<CreatePurchaseOrderResponse>(
-          `/buying/${id}/acheter/${encodeURIComponent(token)}`,
+          `/buying/${id}/${encodeURIComponent(token)}`,
           {
             method: "POST",
             body: JSON.stringify(payload),

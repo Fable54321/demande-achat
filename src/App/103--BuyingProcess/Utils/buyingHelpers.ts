@@ -3,6 +3,7 @@ import type {
   PurchaseOrderItemForm,
 } from "./buyingTypes"
 import type { PurchaseRequestItem } from "../../../Contexts/PurchaseRequestContext"
+import { MAX_QUANTITY_FORMAT_LENGTH } from "../../100-Form/Utils/formConstants"
 
 export const createEmptyGroup = (): PurchaseOrderGroupForm => ({
   localId: crypto.randomUUID(),
@@ -34,7 +35,7 @@ export const createItemFormFromRequestItem = (
   final_unit_price: "",
   item_code: "",
   item_description: item.description ?? "",
-  ordered_unit: item.quantity_format ?? "",
+  ordered_unit: (item.quantity_format ?? "").slice(0, MAX_QUANTITY_FORMAT_LENGTH),
 })
 
 export const toNullableText = (value: string) => {

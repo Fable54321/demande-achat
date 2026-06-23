@@ -1,5 +1,9 @@
 import type { PurchaseRequestItem } from "../../../Contexts/PurchaseRequestContext"
 import {
+  MAX_DESCRIPTION_LENGTH,
+  MAX_QUANTITY_FORMAT_LENGTH,
+} from "../../100-Form/Utils/formConstants"
+import {
   createItemFormFromRequestItem,
 } from "../Utils/buyingHelpers"
 import type {
@@ -82,12 +86,12 @@ const PurchaseOrderItemsPicker = ({
         className="mt-1"
       />
 
-      <div>
-        <p className="font-semibold text-lg text-slate-900">
+      <div className="min-w-0">
+        <p className="whitespace-pre-wrap text-lg font-semibold text-slate-900 [overflow-wrap:anywhere]">
           {requestItem.description}
         </p>
 
-        <p className="text-md text-slate-600">
+        <p className="text-md text-slate-600 [overflow-wrap:anywhere]">
           Quantité demandée: {requestItem.quantity}{" "}
           {requestItem.quantity_format ?? ""}
         </p>
@@ -105,7 +109,7 @@ const PurchaseOrderItemsPicker = ({
 
       {group.items.length > 0 && (
         <div className="overflow-x-auto rounded-xl border border-slate-200">
-          <table className="w-full min-w-200 text-left ">
+          <table className="w-full min-w-200 table-fixed text-left ">
             <thead className="bg-slate-50 text-sm uppercase text-slate-500">
               <tr>
                 <th className="px-3 py-2">Code</th>
@@ -117,12 +121,18 @@ const PurchaseOrderItemsPicker = ({
             </thead>
 
             <tbody>
-              {group.items.map((item) => (
+              {group.items.map((item) => {
+                const isDescriptionAtLimit =
+                  item.item_description.length >= MAX_DESCRIPTION_LENGTH
+                const isFormatAtLimit =
+                  item.ordered_unit.length >= MAX_QUANTITY_FORMAT_LENGTH
+
+                return (
                 <tr
                   key={item.purchase_request_item_id}
                   className="border-t border-slate-200"
                 >
-                  <td className="px-3 py-2">
+                  <td className="min-w-0 px-3 py-2">
                     <input
                       value={item.item_code}
                       onChange={(event) =>
@@ -135,20 +145,39 @@ const PurchaseOrderItemsPicker = ({
                     />
                   </td>
 
-                  <td className="px-3 py-2">
-                    <input
-                      value={item.item_description}
-                      onChange={(event) =>
-                        updateItem(item.purchase_request_item_id, {
-                          ...item,
-                          item_description: event.target.value,
-                        })
-                      }
-                      className="w-full rounded-lg border border-slate-300 px-2 py-1"
-                    />
+                  <td className="min-w-0 px-3 py-2">
+                    <div className="space-y-1">
+                      <input
+                        value={item.item_description}
+                        maxLength={MAX_DESCRIPTION_LENGTH}
+                        onChange={(event) =>
+                          updateItem(item.purchase_request_item_id, {
+                            ...item,
+                            item_description: event.target.value,
+                          })
+                        }
+                        className="w-full rounded-lg border border-slate-300 px-2 py-1"
+                      />
+                      <div
+                        className={`flex justify-between gap-2 text-xs font-semibold ${
+                          isDescriptionAtLimit
+                            ? "text-orange-700"
+                            : "text-slate-500"
+                        }`}
+                      >
+                        <span>
+                          {isDescriptionAtLimit
+                            ? "Limite atteinte"
+                            : `${MAX_DESCRIPTION_LENGTH} caractères max.`}
+                        </span>
+                        <span>
+                          {item.item_description.length}/{MAX_DESCRIPTION_LENGTH}
+                        </span>
+                      </div>
+                    </div>
                   </td>
 
-                  <td className="px-3 py-2">
+                  <td className="min-w-0 px-3 py-2">
                     <input
                       type="number"
                       min="0"
@@ -163,20 +192,37 @@ const PurchaseOrderItemsPicker = ({
                     />
                   </td>
 
-                  <td className="px-3 py-2">
-                    <input
-                      value={item.ordered_unit}
-                      onChange={(event) =>
-                        updateItem(item.purchase_request_item_id, {
-                          ...item,
-                          ordered_unit: event.target.value,
-                        })
-                      }
-                      className="w-28 rounded-lg border border-slate-300 px-2 py-1"
-                    />
+                  <td className="min-w-0 px-3 py-2">
+                    <div className="space-y-1">
+                      <input
+                        value={item.ordered_unit}
+                        maxLength={MAX_QUANTITY_FORMAT_LENGTH}
+                        onChange={(event) =>
+                          updateItem(item.purchase_request_item_id, {
+                            ...item,
+                            ordered_unit: event.target.value,
+                          })
+                        }
+                        className="w-28 rounded-lg border border-slate-300 px-2 py-1"
+                      />
+                      <div
+                        className={`flex justify-between gap-2 text-xs font-semibold ${
+                          isFormatAtLimit ? "text-orange-700" : "text-slate-500"
+                        }`}
+                      >
+                        <span>
+                          {isFormatAtLimit
+                            ? "Limite atteinte"
+                            : `${MAX_QUANTITY_FORMAT_LENGTH} caractères max.`}
+                        </span>
+                        <span>
+                          {item.ordered_unit.length}/{MAX_QUANTITY_FORMAT_LENGTH}
+                        </span>
+                      </div>
+                    </div>
                   </td>
 
-                  <td className="px-3 py-2">
+                  <td className="min-w-0 px-3 py-2">
                     <input
                       type="number"
                       min="0"
@@ -191,9 +237,9 @@ const PurchaseOrderItemsPicker = ({
                       className="w-28 rounded-lg border border-slate-300 px-2 py-1"
                     />
                   </td>
-
                 </tr>
-              ))}
+                )
+              })}
             </tbody>
           </table>
         </div>

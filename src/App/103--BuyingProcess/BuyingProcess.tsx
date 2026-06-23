@@ -1,6 +1,10 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useParams } from "react-router-dom"
-import { useBuying, type PurchaseMode } from "../../Contexts/BuyingContext"
+import {
+  useBuying,
+  type CreatePurchaseOrderResponse,
+  type PurchaseMode,
+} from "../../Contexts/BuyingContext"
 import BuyingHeader from "./Components/BuyingHeader"
 import BuyingRequestSummary from "./Components/BuyingRequestSummary"
 import PurchaseOrderGroupCard from "./Components/PurchaseOrderGroupCard"
@@ -9,6 +13,19 @@ import SuccesOverlay from "../SuccesOverlay"
 import { createEmptyGroup } from "./Utils/buyingHelpers"
 import { buildCreatePurchaseOrderPayload } from "./Utils/buyingPayload"
 import type { PurchaseOrderGroupForm } from "./Utils/buyingTypes"
+
+const PURCHASE_TRACKING_URL = "https://vegibec-portail.com/suivi-des-achats"
+const SUCCESS_REDIRECT_DELAY_MS = 5000
+
+type CreatedPurchaseOrderJournalEntry = {
+  id: number
+  reference: string
+  supplierName: string | null
+  pdfUrl: string | null
+}
+
+const getPurchaseOrderPdfUrl = (result: CreatePurchaseOrderResponse) =>
+  result.purchase_order_pdf?.url ?? result.purchase_order_pdf_urls?.[0] ?? null
 
 const BuyingProcess = () => {
   const { id, token } = useParams<{ id: string; token: string }>()
@@ -29,6 +46,10 @@ const BuyingProcess = () => {
   ])
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [submitSuccess, setSubmitSuccess] = useState(false)
+  const [createdPurchaseOrders, setCreatedPurchaseOrders] = useState<
+    CreatedPurchaseOrderJournalEntry[]
+  >([])
+  const redirectTimerRef = useRef<number | null>(null)
 
   useEffect(() => {
     if (!id || !token) return
@@ -36,6 +57,14 @@ const BuyingProcess = () => {
     fetchBuyingRequestByToken(Number(id), token)
     fetchSuppliers()
   }, [id, token, fetchBuyingRequestByToken, fetchSuppliers])
+
+  useEffect(() => {
+    return () => {
+      if (redirectTimerRef.current !== null) {
+        window.clearTimeout(redirectTimerRef.current)
+      }
+    }
+  }, [])
 
   const requestItems = useMemo(() => {
     return buyingRequest?.items ?? []
@@ -86,6 +115,12 @@ const purchaseMode: PurchaseMode = useMemo(() => {
   const handleSubmit = async () => {
     setSubmitError(null)
     setSubmitSuccess(false)
+    setCreatedPurchaseOrders([])
+
+    if (redirectTimerRef.current !== null) {
+      window.clearTimeout(redirectTimerRef.current)
+      redirectTimerRef.current = null
+    }
 
     if (!id || !token) {
       setSubmitError("Lien d'achat invalide.")
@@ -96,6 +131,8 @@ const purchaseMode: PurchaseMode = useMemo(() => {
       setSubmitError("Ajoutez au moins un article à acheter.")
       return
     }
+
+   const createdOrders: CreatedPurchaseOrderJournalEntry[] = []
 
    for (const [index, group] of activeGroups.entries()) {
   const isLastGroup = index === activeGroups.length - 1
@@ -111,9 +148,22 @@ const purchaseMode: PurchaseMode = useMemo(() => {
     setSubmitError("Erreur lors de la création d'un bon d'achat.")
     return
   }
+
+  createdOrders.push({
+    id: result.purchase_order.id,
+    reference: result.purchase_order.purchase_order_reference,
+    supplierName: result.purchase_order.supplier_name,
+    pdfUrl: getPurchaseOrderPdfUrl(result),
+  })
 }
 
+    window.scrollTo({ top: 0, behavior: "smooth" })
+    setCreatedPurchaseOrders(createdOrders)
     setSubmitSuccess(true)
+
+    redirectTimerRef.current = window.setTimeout(() => {
+      window.location.href = PURCHASE_TRACKING_URL
+    }, SUCCESS_REDIRECT_DELAY_MS)
   }
 
   if (loading && !buyingRequest) {
@@ -147,6 +197,66 @@ const purchaseMode: PurchaseMode = useMemo(() => {
       )}
 
       <div className="mx-auto max-w-6xl space-y-6">
+        {createdPurchaseOrders.length > 0 && (
+          <section className="rounded-2xl border border-[#4B7312]/30 bg-white p-5 shadow-sm">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="text-xl font-bold text-[#4B7312]">
+                  Bons d'achat crees ({createdPurchaseOrders.length})
+                </h2>
+                <p className="mt-1 text-sm text-slate-600">
+                  {createdPurchaseOrders.length > 1
+                    ? "Cette demande contient plusieurs bons d'achat. Chaque reference ci-dessous correspond a un bon distinct."
+                    : "Bon d'achat cree pour cette demande."}
+                </p>
+              </div>
+              <p className="rounded-full bg-[#4B7312]/10 px-3 py-1 text-sm font-semibold text-[#4B7312]">
+                Redirection dans 5 secondes
+              </p>
+            </div>
+
+            <div className="mt-4 grid gap-3">
+              {createdPurchaseOrders.map((purchaseOrder, index) => (
+                <div
+                  key={purchaseOrder.id}
+                  className="rounded-xl border border-slate-200 bg-slate-50 p-4"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-500">
+                        Bon {index + 1} de {createdPurchaseOrders.length}
+                      </p>
+                      <p className="mt-1 text-lg font-bold text-slate-900 [overflow-wrap:anywhere]">
+                        {purchaseOrder.reference}
+                      </p>
+                      {purchaseOrder.supplierName && (
+                        <p className="mt-1 text-sm text-slate-600 [overflow-wrap:anywhere]">
+                          Fournisseur: {purchaseOrder.supplierName}
+                        </p>
+                      )}
+                    </div>
+
+                    {purchaseOrder.pdfUrl ? (
+                      <a
+                        href={purchaseOrder.pdfUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rounded-lg bg-[#4B7312] px-4 py-2 text-sm font-bold text-white hover:bg-[#3d5f0f]"
+                      >
+                        Ouvrir le PDF
+                      </a>
+                    ) : (
+                      <span className="text-sm font-semibold text-slate-500">
+                        PDF non disponible
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         <BuyingHeader purchaseRequest={buyingRequest} />
 
         <BuyingRequestSummary purchaseRequest={buyingRequest} />

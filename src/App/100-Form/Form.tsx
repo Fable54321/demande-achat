@@ -34,6 +34,7 @@ import {
   MAX_JUSTIFICATION_LENGTH,
   MAX_LINK_LENGTH,
   MAX_PURCHASE_ITEMS,
+  MAX_QUANTITY_FORMAT_LENGTH,
   MAX_NAME_LENGTH,
   MAX_PRICE,
   MAX_QUANTITY,
@@ -102,11 +103,14 @@ const Form = () => {
   const itemCount = hasMultipleItems ? requestedItemCount : 1
   const currentItem = purchaseItems[currentItemIndex] ?? createEmptyItem()
   const description = currentItem.description
+  const isDescriptionAtLimit = description.length >= MAX_DESCRIPTION_LENGTH
   const justification = currentItem.justification
   const price = currentItem.price
   const link = currentItem.link
   const quantity = currentItem.quantity
   const quantityFormat = currentItem.quantityFormat
+  const isQuantityFormatAtLimit =
+    quantityFormat.length >= MAX_QUANTITY_FORMAT_LENGTH
   const images = currentItem.images
   const totalImageCount = purchaseItems.reduce(
     (total, item) => total + item.images.length,
@@ -869,19 +873,39 @@ const successMessage = "Votre demande d'achat a bien été envoyée"
     optional
     helpText="Précisez seulement si utile : boîte, paquet, caisse, rouleau, etc."
   >
-    <input
+    <div className="space-y-2">
+      <input
       className={fieldControlClass}
       type="text"
       name="quantity_format"
       id="quantityFormat"
       placeholder="Ex: boîte(s), paquet(s)"
+      maxLength={MAX_QUANTITY_FORMAT_LENGTH}
       value={quantityFormat}
       onChange={(e) =>
         updateCurrentItem({
-          quantityFormat: stripUnsafeText(e.target.value, 80),
+          quantityFormat: stripUnsafeText(
+            e.target.value,
+            MAX_QUANTITY_FORMAT_LENGTH,
+          ),
         })
       }
-    />
+      />
+      <div
+        className={`flex justify-between gap-3 text-xs font-semibold ${
+          isQuantityFormatAtLimit ? "text-orange-700" : "text-slate-500"
+        }`}
+      >
+        <span>
+          {isQuantityFormatAtLimit
+            ? `Limite atteinte: ${MAX_QUANTITY_FORMAT_LENGTH} caractères maximum.`
+            : `${MAX_QUANTITY_FORMAT_LENGTH} caractères maximum.`}
+        </span>
+        <span>
+          {quantityFormat.length}/{MAX_QUANTITY_FORMAT_LENGTH}
+        </span>
+      </div>
+    </div>
   </Field>
 </div>
         <input
@@ -899,7 +923,8 @@ const successMessage = "Votre demande d'achat a bien été envoyée"
             icon={PackageCheck}
             label="Description du produit demandé"
           >
-            <textarea
+            <div className="space-y-2">
+              <textarea
               className={`${fieldControlClass} min-h-28 resize-y leading-6 text-`}
               name="description"
               id="description"
@@ -917,6 +942,21 @@ const successMessage = "Votre demande d'achat a bien été envoyée"
               }
               required
             />
+              <div
+                className={`flex justify-between gap-3 text-xs font-semibold ${
+                  isDescriptionAtLimit ? "text-orange-700" : "text-slate-500"
+                }`}
+              >
+                <span>
+                  {isDescriptionAtLimit
+                    ? `Limite atteinte: ${MAX_DESCRIPTION_LENGTH} caractères maximum.`
+                    : `${MAX_DESCRIPTION_LENGTH} caractères maximum.`}
+                </span>
+                <span>
+                  {description.length}/{MAX_DESCRIPTION_LENGTH}
+                </span>
+              </div>
+            </div>
           </Field>
 
           <Field

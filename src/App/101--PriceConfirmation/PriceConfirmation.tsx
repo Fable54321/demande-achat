@@ -412,19 +412,19 @@ const successMessage = "la confirmation de prix a bien été envoyée"
         key={item.id}
         className="rounded-xl border border-secondary/15 bg-white p-4 shadow-sm"
       >
-        <div className="flex flex-col gap-2">
+        <div className="flex min-w-0 flex-col gap-2">
           <p className="text-sm font-black uppercase tracking-[0.12em] text-secondary">
             Article {item.item_index}
           </p>
 
-          <p className="text-slate-900">
+          <p className="whitespace-pre-wrap text-slate-900 [overflow-wrap:anywhere]">
             <span className="font-bold">Produit:</span>
             <br />
             {item.description || "Non indiqué"}
           </p>
 
           {item.reason && (
-            <p className="text-slate-900">
+            <p className="whitespace-pre-wrap text-slate-900 [overflow-wrap:anywhere]">
               <span className="font-bold">Justification:</span>
               <br />
               {item.reason}

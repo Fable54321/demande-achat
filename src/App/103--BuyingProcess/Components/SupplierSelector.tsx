@@ -14,6 +14,9 @@ const normalize = (value: string) =>
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
 
+const getSupplierPhone = (supplier: Supplier) =>
+  supplier.phone ?? supplier.supplier_phone ?? ""
+
 const SupplierSelector = ({ group, suppliers, onChange }: Props) => {
   const [isOpen, setIsOpen] = useState(false)
   const wrapperRef = useRef<HTMLDivElement | null>(null)
@@ -47,12 +50,14 @@ const SupplierSelector = ({ group, suppliers, onChange }: Props) => {
   }
 
   const handleSupplierSelect = (supplier: Supplier) => {
+    const supplierPhone = getSupplierPhone(supplier)
+
     onChange({
       ...group,
       supplier_id: supplier.id,
       supplier_name: supplier.name,
       supplier_address_snapshot: supplier.address_snapshot ?? "",
-      supplier_phone: supplier.phone ?? "",
+      supplier_phone: supplierPhone,
     })
 
     setIsOpen(false)
@@ -132,9 +137,9 @@ const SupplierSelector = ({ group, suppliers, onChange }: Props) => {
                   {supplier.name}
                 </p>
 
-                {(supplier.address_snapshot || supplier.phone) && (
+                {(supplier.address_snapshot || getSupplierPhone(supplier)) && (
                   <p className="mt-1 text-xs text-slate-500">
-                    {[supplier.address_snapshot, supplier.phone]
+                    {[supplier.address_snapshot, getSupplierPhone(supplier)]
                       .filter(Boolean)
                       .join(" · ")}
                   </p>

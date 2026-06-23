@@ -19,6 +19,13 @@ type Props = {
   onRemove: () => void
 }
 
+const getTodayDateInputValue = () => {
+  const today = new Date()
+  const timezoneOffset = today.getTimezoneOffset() * 60 * 1000
+
+  return new Date(today.getTime() - timezoneOffset).toISOString().slice(0, 10)
+}
+
 const PurchaseOrderGroupCard = ({
   group,
   groupIndex,
@@ -84,6 +91,15 @@ const PurchaseOrderGroupCard = ({
               }
               className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2"
             />
+            <button
+              type="button"
+              onClick={() =>
+                onChange({ ...group, ordered_at: getTodayDateInputValue() })
+              }
+              className="mt-2 rounded-lg border border-[#4B7312] px-3 py-2 text-sm font-semibold text-[#4B7312] hover:bg-[#4B7312] hover:text-white"
+            >
+              Aujourd'hui
+            </button>
           </label>
 
         </div>
