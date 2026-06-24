@@ -87,11 +87,11 @@ const PurchaseOrderItemsPicker = ({
       />
 
       <div className="min-w-0">
-        <p className="whitespace-pre-wrap text-lg font-semibold text-slate-900 [overflow-wrap:anywhere]">
+        <p className="whitespace-pre-wrap text-lg font-semibold text-slate-900 wrap-anywhere">
           {requestItem.description}
         </p>
 
-        <p className="text-md text-slate-600 [overflow-wrap:anywhere]">
+        <p className="text-md text-slate-600 wrap-anywhere">
           Quantité demandée: {requestItem.quantity}{" "}
           {requestItem.quantity_format ?? ""}
         </p>
