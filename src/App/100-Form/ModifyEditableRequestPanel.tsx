@@ -104,7 +104,6 @@ const ModifyEditableRequestPanel = ({
 
       return (
         item.description.trim().length > 0 &&
-        item.quantity_format.trim().length > 0 &&
         Number.isFinite(quantity) &&
         quantity > 0 &&
         Number.isFinite(unitPrice) &&
@@ -374,7 +373,7 @@ const ModifyEditableRequestPanel = ({
           type="button"
           onClick={handleSubmit}
           disabled={!canSubmit || isModifyingEditableRequest}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-lime-600 px-4 py-2 text-sm font-semibold text-white hover:bg-lime-700 disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-secondary px-4 py-2 text-sm font-semibold text-white hover:bg-primary disabled:cursor-not-allowed disabled:opacity-60"
         >
           {isModifyingEditableRequest ? (
             <>

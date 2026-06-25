@@ -83,7 +83,7 @@ const CancelEditableRequestPanel = ({
           type="button"
           onClick={handleSubmit}
           disabled={!canSubmit || isCancellingEditableRequest}
-          className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+          className="rounded-xl cursor-pointer bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {isCancellingEditableRequest
             ? "Annulation..."
