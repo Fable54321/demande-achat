@@ -36,7 +36,6 @@ import {
   MAX_PURCHASE_ITEMS,
   MAX_QUANTITY_FORMAT_LENGTH,
   MAX_NAME_LENGTH,
-  MAX_PRICE,
   MAX_QUANTITY,
 } from "./Utils/formConstants"
 import {
@@ -49,6 +48,7 @@ import {
 import Field from "./Field"
 import SuccesOverlay from "../SuccesOverlay"
 import { validatePurchaseRequestForm } from "./Utils/validatePurchaseRequestForm"
+import EditableRequestsOverlay from "./EditableRequestOverlay"
 
 
 
@@ -98,6 +98,7 @@ const Form = () => {
   const [companyWebsite, setCompanyWebsite] = useState("")
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
   const [neededByDate, setNeededByDate] = useState("")
+  const [isEditableRequestsOpen, setIsEditableRequestsOpen] = useState(false)
 
   const requestedItemCount = Number(purchaseItemCount) || 1
   const itemCount = hasMultipleItems ? requestedItemCount : 1
@@ -545,6 +546,13 @@ const successMessage = "Votre demande d'achat a bien été envoyée"
           />
        
       }
+      <button
+  type="button"
+  onClick={() => setIsEditableRequestsOpen(true)}
+  className="mt-4 inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+>
+  Je veux annuler ou modifier une demande
+</button>
       <form
         onSubmit={handleSubmit}
         className="mx-auto flex w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-secondary/15 bg-white shadow-2xl shadow-secondary/10"
@@ -985,21 +993,18 @@ const successMessage = "Votre demande d'achat a bien été envoyée"
 
           <div className="grid gap-5 tablet:grid-cols-2">
             <Field icon={DollarSign} label="Prix connu ou estimé (en $ cad)" optional>
-              <input
-                className={fieldControlClass}
-                type="number"
-                min="0"
-                max={MAX_PRICE}
-                step="0.01"
-                inputMode="decimal"
-                name="price"
-                id="price"
-                placeholder="0.00"
-                value={price}
-                onChange={(e) =>
-                  updateCurrentItem({ price: sanitizePrice(e.target.value) })
-                }
-              />
+          <input
+  className={fieldControlClass}
+  type="text"
+  inputMode="decimal"
+  name="price"
+  id="price"
+  placeholder="0.00"
+  value={price}
+  onChange={(e) =>
+    updateCurrentItem({ price: sanitizePrice(e.target.value) })
+  }
+/>
             </Field>
 
             <Field
@@ -1147,6 +1152,11 @@ const successMessage = "Votre demande d'achat a bien été envoyée"
           </button>
         </div>
       </form>
+      <EditableRequestsOverlay
+  isOpen={isEditableRequestsOpen}
+  onClose={() => setIsEditableRequestsOpen(false)}
+  employees={officeWorkers}
+/>
       
     </section>
   )
