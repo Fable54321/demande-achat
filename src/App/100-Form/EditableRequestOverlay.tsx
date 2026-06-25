@@ -14,6 +14,8 @@ type EditableRequestsOverlayProps = {
   employees: Employee[]
 }
 
+type OverlayMode = "lookup" | "modify" | "cancel"
+
 const formatEmployeeName = (employee: Employee) => {
   return [employee.surname, employee.name].filter(Boolean).join(" ")
 }
@@ -30,6 +32,10 @@ const EditableRequestsOverlay = ({
     fetchEditableRequestsByEmail,
     clearEditableRequestMessages,
   } = useEditablePurchaseRequests()
+
+  const [mode, setMode] = useState<OverlayMode>("lookup")
+const [selectedRequestId, setSelectedRequestId] = useState<number | null>(null)
+const [selectedRequestEmail, setSelectedRequestEmail] = useState("")
 
   const [selectedEmail, setSelectedEmail] = useState("")
    const [hasSearched, setHasSearched] = useState(false)
@@ -54,10 +60,28 @@ const EditableRequestsOverlay = ({
 }
 
   const handleSearch = async () => {
-    if (!selectedEmail) return
+  if (!selectedEmail) return
 
-    await fetchEditableRequestsByEmail(selectedEmail)
-  }
+  setHasSearched(true)
+  await fetchEditableRequestsByEmail(selectedEmail)
+}
+
+const handleOpenModify = (requestId: number) => {
+  setSelectedRequestId(requestId)
+  setSelectedRequestEmail(selectedEmail)
+  setMode("modify")
+}
+
+const handleOpenCancel = (requestId: number) => {
+  setSelectedRequestId(requestId)
+  setSelectedRequestEmail(selectedEmail)
+  setMode("cancel")
+}
+
+const handleBackToLookup = () => {
+  setMode("lookup")
+  setSelectedRequestId(null)
+}
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
@@ -161,6 +185,7 @@ const EditableRequestsOverlay = ({
                 <div className="flex gap-2">
                   <button
                     type="button"
+                    onClick={() => handleOpenModify(request.id)}
                     className="rounded-xl cursor-pointer border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
                   >
                     Modifier
@@ -168,6 +193,7 @@ const EditableRequestsOverlay = ({
 
                   <button
                     type="button"
+                    onClick={() => handleOpenCancel(request.id)}
                     className="rounded-xl cursor-pointer border border-red-200 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50"
                   >
                     Annuler

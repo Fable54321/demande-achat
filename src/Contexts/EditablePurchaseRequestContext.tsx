@@ -87,6 +87,13 @@ type EditablePurchaseRequestContextValue = {
   isCancellingEditableRequest: boolean
   editableRequestError: string | null
   editableRequestSuccess: string | null
+editableRequestDetail: EditablePurchaseRequestDetail | null
+isLoadingEditableRequestDetail: boolean
+fetchEditableRequestDetail: (
+  id: number,
+  email: string,
+) => Promise<EditablePurchaseRequestDetail>
+clearEditableRequestDetail: () => void
   fetchEditableRequestsByEmail: (email: string) => Promise<EditablePurchaseRequest[]>
   modifyEditablePurchaseRequest: (
     id: number,
@@ -101,6 +108,8 @@ type EditablePurchaseRequestContextValue = {
 
 const EditablePurchaseRequestContext =
   createContext<EditablePurchaseRequestContextValue | null>(null)
+
+
 
 const getErrorMessage = async (
   response: Response,
@@ -145,10 +154,19 @@ export const EditablePurchaseRequestProvider = ({
     string | null
   >(null)
 
-  const clearEditableRequestMessages = useCallback(() => {
-    setEditableRequestError(null)
-    setEditableRequestSuccess(null)
+const [editableRequestDetail, setEditableRequestDetail] =
+  useState<EditablePurchaseRequestDetail | null>(null)
+
+const [
+  isLoadingEditableRequestDetail,
+  setIsLoadingEditableRequestDetail,
+] = useState(false)
+
+  const clearEditableRequestDetail = useCallback(() => {
+    setEditableRequestDetail(null)
   }, [])
+
+  
 
   const fetchEditableRequestsByEmail = useCallback(async (email: string) => {
     const cleanEmail = email.trim().toLowerCase()
@@ -228,7 +246,10 @@ export const EditablePurchaseRequestProvider = ({
           throw new Error(message)
         }
 
-        setEditableRequestSuccess("La demande a été modifiée avec succès.")
+       setEditableRequestSuccess("La demande a été modifiée avec succès.")
+setEditableRequestDetail(null)
+
+await fetchEditableRequestsByEmail(payload.requester_email)
 
         await fetchEditableRequestsByEmail(payload.requester_email)
       } catch (error) {
@@ -278,6 +299,9 @@ export const EditablePurchaseRequestProvider = ({
         }
 
         setEditableRequestSuccess("La demande a été annulée avec succès.")
+setEditableRequestDetail(null)
+
+await fetchEditableRequestsByEmail(payload.requester_email)
 
         await fetchEditableRequestsByEmail(payload.requester_email)
       } catch (error) {
@@ -296,17 +320,21 @@ export const EditablePurchaseRequestProvider = ({
     [fetchEditableRequestsByEmail],
   )
 
-  const fetchEditableRequestDetail = useCallback(
+const fetchEditableRequestDetail = useCallback(
   async (id: number, email: string) => {
     const cleanEmail = email.trim().toLowerCase()
 
     if (!cleanEmail) {
-      throw new Error("Une adresse courriel est requise.")
+      const message = "Une adresse courriel est requise."
+      setEditableRequestError(message)
+      setEditableRequestDetail(null)
+      throw new Error(message)
     }
 
-    setIsLoadingEditableRequests(true)
+    setIsLoadingEditableRequestDetail(true)
     setEditableRequestError(null)
     setEditableRequestSuccess(null)
+    setEditableRequestDetail(null)
 
     try {
       const response = await fetch(
@@ -324,7 +352,11 @@ export const EditablePurchaseRequestProvider = ({
         throw new Error(message)
       }
 
-      return (await response.json()) as EditablePurchaseRequestDetail
+      const data = (await response.json()) as EditablePurchaseRequestDetail
+
+      setEditableRequestDetail(data)
+
+      return data
     } catch (error) {
       const message =
         error instanceof Error
@@ -332,14 +364,20 @@ export const EditablePurchaseRequestProvider = ({
           : "Impossible de charger la demande."
 
       setEditableRequestError(message)
+      setEditableRequestDetail(null)
 
       throw error
     } finally {
-      setIsLoadingEditableRequests(false)
+      setIsLoadingEditableRequestDetail(false)
     }
   },
   [],
 )
+
+const clearEditableRequestMessages = useCallback(() => {
+    setEditableRequestError(null)
+    setEditableRequestSuccess(null)
+  }, [])
 
   const value = useMemo(
     () => ({
@@ -351,23 +389,14 @@ export const EditablePurchaseRequestProvider = ({
       editableRequestSuccess,
       fetchEditableRequestsByEmail,
       fetchEditableRequestDetail,
+      editableRequestDetail,
+      isLoadingEditableRequestDetail,
+      clearEditableRequestDetail,
       modifyEditablePurchaseRequest,
       cancelEditablePurchaseRequest,
       clearEditableRequestMessages,
     }),
-    [
-      editableRequests,
-      isLoadingEditableRequests,
-      isModifyingEditableRequest,
-      isCancellingEditableRequest,
-      editableRequestError,
-      editableRequestSuccess,
-      fetchEditableRequestsByEmail,
-      fetchEditableRequestDetail,
-      modifyEditablePurchaseRequest,
-      cancelEditablePurchaseRequest,
-      clearEditableRequestMessages,
-    ],
+    [editableRequests, isLoadingEditableRequests, isModifyingEditableRequest, isCancellingEditableRequest, editableRequestError, editableRequestSuccess, fetchEditableRequestsByEmail, fetchEditableRequestDetail, editableRequestDetail, isLoadingEditableRequestDetail, clearEditableRequestDetail, modifyEditablePurchaseRequest, cancelEditablePurchaseRequest, clearEditableRequestMessages],
   )
 
   return (
