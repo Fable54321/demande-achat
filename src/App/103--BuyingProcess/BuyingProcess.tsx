@@ -226,11 +226,11 @@ const purchaseMode: PurchaseMode = useMemo(() => {
                       <p className="text-xs font-black uppercase tracking-[0.12em] text-slate-500">
                         Bon {index + 1} de {createdPurchaseOrders.length}
                       </p>
-                      <p className="mt-1 text-lg font-bold text-slate-900 [overflow-wrap:anywhere]">
+                      <p className="mt-1 text-lg font-bold text-slate-900 wrap-anywhere">
                         {purchaseOrder.reference}
                       </p>
                       {purchaseOrder.supplierName && (
-                        <p className="mt-1 text-sm text-slate-600 [overflow-wrap:anywhere]">
+                        <p className="mt-1 text-sm text-slate-600 wrap-anywhere">
                           Fournisseur: {purchaseOrder.supplierName}
                         </p>
                       )}

@@ -197,7 +197,7 @@ const ReceiptVouchersCreation = () => {
             <p className="text-sm font-semibold uppercase text-slate-500">
               Bon de reception cree
             </p>
-            <p className="mt-1 text-xl font-bold text-[#4B7312] [overflow-wrap:anywhere]">
+            <p className="mt-1 text-xl font-bold text-[#4B7312] wrap-anywhere">
               {lastCreatedReceiptVoucher.receipt_voucher_reference}
             </p>
           </section>
