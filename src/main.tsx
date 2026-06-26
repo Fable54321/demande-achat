@@ -10,6 +10,8 @@ import AdminApproval from './App/102--AdminApproval/AdminApproval';
 import BuyingProcess from './App/103--BuyingProcess/BuyingProcess';
 import { BuyingProvider } from './Contexts/BuyingContext';
 import { EditablePurchaseRequestProvider } from './Contexts/EditablePurchaseRequestContext';
+import ReceiptVouchersCreation from './App/105--ReceiptVouchersCreation/ReceiptVouchersCreation';
+import { ReceiptVoucherProvider } from './Contexts/ReceiptVoucherContext';
 
 
 const router = createBrowserRouter([
@@ -36,14 +38,20 @@ const router = createBrowserRouter([
     path: "/requete/:id/acheter/:token",
     element: <BuyingProcess />
   },
- 
- 
+  {
+    path: "/requete/:id/reception/:token",
+    element: 
+    <ReceiptVoucherProvider>
+    <ReceiptVouchersCreation />
+    </ReceiptVoucherProvider>
+  }
 ]);
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <PurchaseRequestsProvider>
       <BuyingProvider>
+
         <EditablePurchaseRequestProvider>
       <RouterProvider router={router} />
       </EditablePurchaseRequestProvider>

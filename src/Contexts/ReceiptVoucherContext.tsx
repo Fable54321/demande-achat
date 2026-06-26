@@ -6,7 +6,7 @@ import {
   useState,
   type ReactNode,
 } from "react"
-
+import type { PurchaseRequest } from "./PurchaseRequestContext"
 
 const API_URL = import.meta.env.VITE_API_URL
 
@@ -52,13 +52,26 @@ export type ReceiptVoucherItem = {
   updated_at: string
 }
 
-type CreateReceiptVoucherResponse = {
+export type CreateReceiptVoucherResponse = {
+  purchase_request: PurchaseRequest
   receipt_voucher: ReceiptVoucher
   items: ReceiptVoucherItem[]
+  ordered_total_quantity: number
+  received_total_quantity: number
+  has_receivable_items: boolean
 }
 
 type ReceiptVoucherContextValue = {
+  receiptVoucherRequest: PurchaseRequest | null
+  lastCreatedReceiptVoucher: ReceiptVoucher | null
+  lastCreatedReceiptVoucherItems: ReceiptVoucherItem[]
+  fetchReceiptVoucherRequestByToken: (
+    id: number,
+    token: string,
+  ) => Promise<PurchaseRequest | null>
   createReceiptVoucher: (
+    id: number,
+    token: string,
     payload: CreateReceiptVoucherPayload,
   ) => Promise<CreateReceiptVoucherResponse | null>
   loadingReceiptVoucher: boolean
@@ -70,11 +83,44 @@ const ReceiptVoucherContext = createContext<ReceiptVoucherContextValue | null>(
   null,
 )
 
+const request = async <T,>(
+  endpoint: string,
+  options: RequestInit = {},
+): Promise<T> => {
+  const response = await fetch(`${API_URL}${endpoint}`, {
+    credentials: "include",
+    headers:
+      options.body instanceof FormData
+        ? options.headers
+        : {
+            "Content-Type": "application/json",
+            ...(options.headers ?? {}),
+          },
+    ...options,
+  })
+
+  const data = await response.json().catch(() => null)
+
+  if (!response.ok) {
+    throw new Error(data?.message || "Une erreur est survenue")
+  }
+
+  return data as T
+}
+
 export const ReceiptVoucherProvider = ({
   children,
 }: {
   children: ReactNode
 }) => {
+  const [receiptVoucherRequest, setReceiptVoucherRequest] =
+    useState<PurchaseRequest | null>(null)
+  const [lastCreatedReceiptVoucher, setLastCreatedReceiptVoucher] =
+    useState<ReceiptVoucher | null>(null)
+  const [
+    lastCreatedReceiptVoucherItems,
+    setLastCreatedReceiptVoucherItems,
+  ] = useState<ReceiptVoucherItem[]>([])
   const [loadingReceiptVoucher, setLoadingReceiptVoucher] = useState(false)
   const [receiptVoucherError, setReceiptVoucherError] = useState<string | null>(
     null,
@@ -84,52 +130,88 @@ export const ReceiptVoucherProvider = ({
     setReceiptVoucherError(null)
   }, [])
 
-  const createReceiptVoucher = useCallback(
-  async (payload: CreateReceiptVoucherPayload) => {
-    setLoadingReceiptVoucher(true)
-    setReceiptVoucherError(null)
+  const fetchReceiptVoucherRequestByToken = useCallback(
+    async (id: number, token: string) => {
+      try {
+        setLoadingReceiptVoucher(true)
+        setReceiptVoucherError(null)
+        setReceiptVoucherRequest(null)
 
-    try {
-      const response = await fetch(`${API_URL}/receipt-vouchers`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      })
-
-      const data = await response.json().catch(() => null)
-
-      if (!response.ok) {
-        throw new Error(
-          data?.message || "Impossible de créer le bon de réception.",
+        const data = await request<PurchaseRequest>(
+          `/purchase-request/${id}/reception/${encodeURIComponent(token)}`,
         )
+
+        setReceiptVoucherRequest(data)
+        return data
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Lien de reception invalide ou expire."
+
+        setReceiptVoucherError(message)
+        return null
+      } finally {
+        setLoadingReceiptVoucher(false)
       }
+    },
+    [],
+  )
 
-      return data as CreateReceiptVoucherResponse
-    } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Impossible de créer le bon de réception."
+  const createReceiptVoucher = useCallback(
+    async (
+      id: number,
+      token: string,
+      payload: CreateReceiptVoucherPayload,
+    ) => {
+      try {
+        setLoadingReceiptVoucher(true)
+        setReceiptVoucherError(null)
 
-      setReceiptVoucherError(message)
-      return null
-    } finally {
-      setLoadingReceiptVoucher(false)
-    }
-  },
-  [],
-)
+        const data = await request<CreateReceiptVoucherResponse>(
+          `/receipt-vouchers/${id}/reception/${encodeURIComponent(token)}`,
+          {
+            method: "POST",
+            body: JSON.stringify(payload),
+          },
+        )
+
+        setReceiptVoucherRequest(data.purchase_request)
+        setLastCreatedReceiptVoucher(data.receipt_voucher)
+        setLastCreatedReceiptVoucherItems(data.items)
+
+        return data
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Impossible de creer le bon de reception."
+
+        setReceiptVoucherError(message)
+        return null
+      } finally {
+        setLoadingReceiptVoucher(false)
+      }
+    },
+    [],
+  )
 
   const value = useMemo(
     () => ({
+      receiptVoucherRequest,
+      lastCreatedReceiptVoucher,
+      lastCreatedReceiptVoucherItems,
+      fetchReceiptVoucherRequestByToken,
       createReceiptVoucher,
       loadingReceiptVoucher,
       receiptVoucherError,
       clearReceiptVoucherError,
     }),
     [
+      receiptVoucherRequest,
+      lastCreatedReceiptVoucher,
+      lastCreatedReceiptVoucherItems,
+      fetchReceiptVoucherRequestByToken,
       createReceiptVoucher,
       loadingReceiptVoucher,
       receiptVoucherError,
