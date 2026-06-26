@@ -47,6 +47,25 @@ export const toNullableNumber = (value: string) => {
   const trimmed = value.trim()
   if (!trimmed) return null
 
-  const number = Number(trimmed)
+  const number = Number(trimmed.replace(",", "."))
   return Number.isFinite(number) ? number : null
+}
+
+export const toRoundedNumber = (value: string, decimals = 4) => {
+  const number = Number(value.trim().replace(",", "."))
+
+  if (!Number.isFinite(number)) return null
+
+  const factor = 10 ** decimals
+  return Math.round((number + Number.EPSILON) * factor) / factor
+}
+
+export const toRoundedMoney = (value: number) => {
+  return Math.round((value + Number.EPSILON) * 100) / 100
+}
+
+export const toNullableMoney = (value: string) => {
+  const number = toRoundedNumber(value, 6)
+
+  return number === null ? null : toRoundedMoney(number)
 }

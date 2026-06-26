@@ -147,7 +147,7 @@ export const ReceiptVoucherProvider = ({
         const message =
           error instanceof Error
             ? error.message
-            : "Lien de reception invalide ou expire."
+            : "Lien de réception invalide ou expiré."
 
         setReceiptVoucherError(message)
         return null
@@ -185,7 +185,7 @@ export const ReceiptVoucherProvider = ({
         const message =
           error instanceof Error
             ? error.message
-            : "Impossible de creer le bon de reception."
+            : "Impossible de créer le bon de réception."
 
         setReceiptVoucherError(message)
         return null

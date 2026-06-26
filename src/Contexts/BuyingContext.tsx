@@ -88,6 +88,7 @@ export interface PurchaseOrderItemPayload {
   ordered_quantity: number
 
   final_unit_price?: number | null
+  final_total_price?: number | null
   item_code?: string | null
   item_description?: string | null
   ordered_unit?: string | null

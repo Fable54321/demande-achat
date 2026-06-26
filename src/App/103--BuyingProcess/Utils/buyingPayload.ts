@@ -1,6 +1,20 @@
 import type { CreatePurchaseOrderPayload, PurchaseMode } from "../../../Contexts/BuyingContext"
 import type { PurchaseOrderGroupForm } from "./buyingTypes"
-import { toNullableNumber, toNullableText } from "./buyingHelpers"
+import {
+  toNullableMoney,
+  toNullableText,
+  toRoundedMoney,
+  toRoundedNumber,
+} from "./buyingHelpers"
+
+const getRoundedLineTotal = (quantityValue: string, unitPriceValue: string) => {
+  const quantity = toRoundedNumber(quantityValue)
+  const unitPrice = toNullableMoney(unitPriceValue)
+
+  if (quantity === null || unitPrice === null) return null
+
+  return toRoundedMoney(quantity * unitPrice)
+}
 
 export const buildCreatePurchaseOrderPayload = (
   group: PurchaseOrderGroupForm,
@@ -28,8 +42,12 @@ export const buildCreatePurchaseOrderPayload = (
 
   items: group.items.map((item) => ({
     purchase_request_item_id: item.purchase_request_item_id,
-    ordered_quantity: Number(item.ordered_quantity),
-    final_unit_price: toNullableNumber(item.final_unit_price),
+    ordered_quantity: toRoundedNumber(item.ordered_quantity) ?? 0,
+    final_unit_price: toNullableMoney(item.final_unit_price),
+    final_total_price: getRoundedLineTotal(
+      item.ordered_quantity,
+      item.final_unit_price,
+    ),
     item_code: toNullableText(item.item_code),
     item_description: toNullableText(item.item_description),
     ordered_unit: toNullableText(item.ordered_unit),

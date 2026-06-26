@@ -348,7 +348,7 @@ const successMessage = "la confirmation de prix a bien été envoyée"
           {submitSuccess && (
             <div className="flex items-start gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
               <CheckCircle2 className="mt-0.5 shrink-0" size={18} />
-              <span>Le prix demandé a ete confirmé.</span>
+              <span>Le prix demandé a été confirmé.</span>
             </div>
           )}
 
@@ -587,7 +587,7 @@ const successMessage = "la confirmation de prix a bien été envoyée"
           setConfirmedDate("")
           setIsDatePickerOpen(false)
         }}
-        aria-label="Effacer la date selectionnee"
+        aria-label="Effacer la date sélectionnée"
       >
         <X size={18} aria-hidden="true" />
         Effacer
