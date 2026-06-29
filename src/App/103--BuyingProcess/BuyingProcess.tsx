@@ -70,6 +70,15 @@ const toNumber = (value: string) => {
   return Number.isFinite(number) ? number : 0
 }
 
+const toPositiveNumberOrNull = (value: string) => {
+  const trimmedValue = value.trim()
+  if (!trimmedValue) return null
+
+  const number = Number(trimmedValue.replace(",", "."))
+
+  return Number.isFinite(number) && number > 0 ? number : null
+}
+
 const formatMoney = (value: number) =>
   value.toLocaleString("fr-CA", {
     minimumFractionDigits: 2,
@@ -597,9 +606,11 @@ const PurchaseOrderDocument = ({
               <th className="border border-[#d2dfd2] px-3 py-3">
                 Description
               </th>
-              <th className="border border-[#d2dfd2] px-3 py-3">Quantité</th>
+              <th className="border border-[#d2dfd2] px-3 py-3">
+                Quantité *
+              </th>
               <th className="border border-[#d2dfd2] px-3 py-3">Format</th>
-              <th className="border border-[#d2dfd2] px-3 py-3">Prix</th>
+              <th className="border border-[#d2dfd2] px-3 py-3">Prix *</th>
               <th className="border border-[#d2dfd2] px-3 py-3">Montant</th>
             </tr>
           </thead>
@@ -746,9 +757,13 @@ const BuyingProcess = () => {
   ])
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [submitSuccess, setSubmitSuccess] = useState(false)
+  const [dismissedWarnings, setDismissedWarnings] = useState<Set<string>>(
+    () => new Set(),
+  )
   const [createdPurchaseOrders, setCreatedPurchaseOrders] = useState<
     CreatedPurchaseOrderJournalEntry[]
   >([])
+  const warningsRef = useRef<HTMLElement | null>(null)
   const redirectTimerRef = useRef<number | null>(null)
 
   useEffect(() => {
@@ -790,6 +805,71 @@ const BuyingProcess = () => {
     () => groups.filter((group) => group.items.length > 0),
     [groups],
   )
+
+  const purchaseOrderWarnings = useMemo(() => {
+    const warnings: { id: string; message: string }[] = []
+
+    activeGroups.forEach((group, groupIndex) => {
+      const groupLabel =
+        activeGroups.length > 1 ? `Bon ${groupIndex + 1}` : "Bon d'achat"
+
+      if (!group.supplier_name.trim()) {
+        warnings.push({
+          id: `${group.localId}:supplier-name`,
+          message: `${groupLabel}: aucun fournisseur n'est indiqué.`,
+        })
+      }
+
+      if (!group.supplier_address_snapshot.trim()) {
+        warnings.push({
+          id: `${group.localId}:supplier-address`,
+          message: `${groupLabel}: l'adresse du fournisseur est vide.`,
+        })
+      }
+
+      if (!group.supplier_phone.trim()) {
+        warnings.push({
+          id: `${group.localId}:supplier-phone`,
+          message: `${groupLabel}: le téléphone du fournisseur est vide.`,
+        })
+      }
+
+      if (!group.ordered_at) {
+        warnings.push({
+          id: `${group.localId}:ordered-at`,
+          message: `${groupLabel}: la date de commande est vide.`,
+        })
+      }
+
+      if (!group.delivery_method.trim()) {
+        warnings.push({
+          id: `${group.localId}:delivery-method`,
+          message: `${groupLabel}: la méthode de livraison est vide.`,
+        })
+      }
+
+      group.items.forEach((item, itemIndex) => {
+        const itemLabel = `${groupLabel}, article ${itemIndex + 1}`
+
+        if (!item.item_code.trim()) {
+          warnings.push({
+            id: `${group.localId}:${item.purchase_request_item_id}:code`,
+            message: `${itemLabel}: aucun code d'article n'est indiqué.`,
+          })
+        }
+
+        if (!item.item_description.trim()) {
+          warnings.push({
+            id: `${group.localId}:${item.purchase_request_item_id}:description`,
+            message: `${itemLabel}: la description est vide.`,
+          })
+        }
+
+      })
+    })
+
+    return warnings.filter((warning) => !dismissedWarnings.has(warning.id))
+  }, [activeGroups, dismissedWarnings])
 
   const selectedRequestItemIds = useMemo(
     () =>
@@ -862,14 +942,24 @@ const BuyingProcess = () => {
     const invalidGroup = activeGroups.find((group) =>
       group.items.some(
         (item) =>
-          toNumber(item.ordered_quantity) <= 0 ||
-          (item.final_unit_price.trim() !== "" &&
-            !Number.isFinite(Number(item.final_unit_price.replace(",", ".")))),
+          toPositiveNumberOrNull(item.ordered_quantity) === null ||
+          toPositiveNumberOrNull(item.final_unit_price) === null,
       ),
     )
 
     if (invalidGroup) {
       setSubmitError("Chaque article doit avoir une quantité et un prix valides.")
+      return
+    }
+
+    if (purchaseOrderWarnings.length > 0) {
+      setSubmitError(
+        "Veuillez vérifier ou masquer les avertissements avant de créer le bon d'achat.",
+      )
+      warningsRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      })
       return
     }
 
@@ -1025,6 +1115,59 @@ const BuyingProcess = () => {
         >
           + Ajouter un autre bon d'achat
         </button>
+
+        {purchaseOrderWarnings.length > 0 && (
+          <section
+            ref={warningsRef}
+            className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 shadow-sm"
+          >
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="font-black">Informations à vérifier</p>
+                <p className="mt-1 text-amber-900">
+                  Verifiez ces points, puis masquez-les pour confirmer que le
+                  bon d'achat peut être créé.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setDismissedWarnings(
+                    new Set(purchaseOrderWarnings.map((warning) => warning.id)),
+                  )
+                }
+                className="rounded-lg border border-amber-300 bg-white px-3 py-2 text-xs font-bold text-amber-900 hover:bg-amber-100"
+              >
+                Tout masquer
+              </button>
+            </div>
+
+            <div className="mt-3 grid gap-2">
+              {purchaseOrderWarnings.map((warning) => (
+                <div
+                  key={warning.id}
+                  className="flex items-start justify-between gap-3 rounded-lg border border-amber-200 bg-white px-3 py-2"
+                >
+                  <span>{warning.message}</span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setDismissedWarnings((prev) => {
+                        const next = new Set(prev)
+                        next.add(warning.id)
+                        return next
+                      })
+                    }
+                    className="shrink-0 text-xs font-bold text-amber-800 hover:text-amber-950"
+                  >
+                    Masquer
+                  </button>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         <section className="sticky bottom-4 rounded-xl border border-slate-200 bg-white p-4 shadow-lg">
           {submitError && (
