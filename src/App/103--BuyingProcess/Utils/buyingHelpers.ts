@@ -28,13 +28,12 @@ export const buildSupplierAddressSnapshot = ({
   province,
   country,
 }: SupplierAddressFields) => {
-  const streetAndCity = [street, city].filter(Boolean).join(", ")
   const region = [postalCode, province].filter(Boolean).join(" ")
   const regionAndCountry = [region, country].filter(Boolean).join(", ")
 
   void name
 
-  return [streetAndCity, regionAndCountry]
+  return [street, city, regionAndCountry]
     .map((part) => part.trim())
     .filter(Boolean)
     .join("\n")
