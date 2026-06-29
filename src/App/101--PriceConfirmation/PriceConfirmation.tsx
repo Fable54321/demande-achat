@@ -443,14 +443,14 @@ const successMessage = "la confirmation de prix a bien été envoyée"
             Article {item.item_index}
           </p>
 
-          <p className="whitespace-pre-wrap text-slate-900 [overflow-wrap:anywhere]">
+          <p className="whitespace-pre-wrap text-slate-900 wrap-anywhere">
             <span className="font-bold">Produit:</span>
             <br />
             {item.description || "Non indiqué"}
           </p>
 
           {item.reason && (
-            <p className="whitespace-pre-wrap text-slate-900 [overflow-wrap:anywhere]">
+            <p className="whitespace-pre-wrap text-slate-900 wrap-anywhere">
               <span className="font-bold">Justification:</span>
               <br />
               {item.reason}
