@@ -10,8 +10,12 @@ import type { PurchaseRequestItem } from "../../Contexts/PurchaseRequestContext"
 import SuccesOverlay from "../SuccesOverlay"
 import vegibecLogo from "../../assets/vegibec.png"
 import {
+  buildSupplierAddressSnapshot,
   createEmptyGroup,
   createItemFormFromRequestItem,
+  DEFAULT_SUPPLIER_COUNTRY,
+  DEFAULT_SUPPLIER_PROVINCE,
+  parseSupplierAddressSnapshot,
   toRoundedMoney,
 } from "./Utils/buyingHelpers"
 import { buildCreatePurchaseOrderPayload } from "./Utils/buyingPayload"
@@ -72,17 +76,50 @@ const formatMoney = (value: number) =>
     maximumFractionDigits: 2,
   })
 
-const getSupplierAddress = (supplier: Supplier) =>
-  [
-    supplier.name,
+const purchaseOrderFieldClass =
+  "rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-[#4B7312] focus:ring-4 focus:ring-[#96c61c]/20"
+
+const purchaseOrderTableFieldClass =
+  "rounded-md border border-slate-300 bg-white px-2 py-2 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-[#4B7312] focus:ring-4 focus:ring-[#96c61c]/20"
+
+const deliveryMethodOptions = ["Ramassé", "Livré"] as const
+
+const getSupplierAddressFields = (supplier: Supplier) => {
+  const parsedAddress = parseSupplierAddressSnapshot(
     supplier.address_snapshot,
-    supplier.city,
-    supplier.province,
-    supplier.postal_code,
-    supplier.country,
-  ]
-    .filter(Boolean)
-    .join("\n")
+    supplier.name,
+  )
+
+  return {
+    supplier_address_street: parsedAddress.street || supplier.address_snapshot || "",
+    supplier_city: parsedAddress.city || supplier.city || "",
+    supplier_postal_code: parsedAddress.postalCode || supplier.postal_code || "",
+    supplier_province:
+      parsedAddress.province || supplier.province || DEFAULT_SUPPLIER_PROVINCE,
+    supplier_country:
+      parsedAddress.country || supplier.country || DEFAULT_SUPPLIER_COUNTRY,
+  }
+}
+
+const buildGroupSupplierAddressSnapshot = (
+  group: Pick<
+    PurchaseOrderGroupForm,
+    | "supplier_name"
+    | "supplier_address_street"
+    | "supplier_city"
+    | "supplier_postal_code"
+    | "supplier_province"
+    | "supplier_country"
+  >,
+) =>
+  buildSupplierAddressSnapshot({
+    name: group.supplier_name,
+    street: group.supplier_address_street,
+    city: group.supplier_city,
+    postalCode: group.supplier_postal_code,
+    province: group.supplier_province,
+    country: group.supplier_country,
+  })
 
 const PurchaseOrderDocument = ({
   group,
@@ -145,6 +182,30 @@ const PurchaseOrderDocument = ({
     })
   }
 
+  const updateSupplierAddress = (
+    update: Partial<
+      Pick<
+        PurchaseOrderGroupForm,
+        | "supplier_name"
+        | "supplier_address_street"
+        | "supplier_city"
+        | "supplier_postal_code"
+        | "supplier_province"
+        | "supplier_country"
+      >
+    >,
+  ) => {
+    const nextGroup = {
+      ...group,
+      ...update,
+    }
+
+    onChange({
+      ...nextGroup,
+      supplier_address_snapshot: buildGroupSupplierAddressSnapshot(nextGroup),
+    })
+  }
+
   const selectSupplier = (supplierId: string) => {
     if (!supplierId) {
       onChange({
@@ -152,6 +213,11 @@ const PurchaseOrderDocument = ({
         supplier_id: null,
         supplier_name: "",
         supplier_address_snapshot: "",
+        supplier_address_street: "",
+        supplier_city: "",
+        supplier_postal_code: "",
+        supplier_province: DEFAULT_SUPPLIER_PROVINCE,
+        supplier_country: DEFAULT_SUPPLIER_COUNTRY,
         supplier_phone: "",
       })
       return
@@ -162,12 +228,21 @@ const PurchaseOrderDocument = ({
     )
 
     if (!supplier) return
+    const supplierAddressFields = getSupplierAddressFields(supplier)
 
     onChange({
       ...group,
       supplier_id: supplier.id,
       supplier_name: supplier.name,
-      supplier_address_snapshot: getSupplierAddress(supplier),
+      ...supplierAddressFields,
+      supplier_address_snapshot: buildSupplierAddressSnapshot({
+        name: supplier.name,
+        street: supplierAddressFields.supplier_address_street,
+        city: supplierAddressFields.supplier_city,
+        postalCode: supplierAddressFields.supplier_postal_code,
+        province: supplierAddressFields.supplier_province,
+        country: supplierAddressFields.supplier_country,
+      }),
       supplier_phone: supplier.phone ?? supplier.supplier_phone ?? "",
     })
   }
@@ -230,9 +305,9 @@ const PurchaseOrderDocument = ({
             <select
               value={group.supplier_id ?? ""}
               onChange={(event) => selectSupplier(event.target.value)}
-              className="mt-4 w-full rounded-lg border border-[#d2dfd2] px-3 py-2 text-sm"
+              className={`mt-4 w-full ${purchaseOrderFieldClass}`}
             >
-              <option value="">Sélectionner un fournisseur</option>
+              <option value="">Fournisseurs enregistrés</option>
               {suppliers.map((supplier) => (
                 <option key={supplier.id} value={supplier.id}>
                   {supplier.name}
@@ -244,27 +319,88 @@ const PurchaseOrderDocument = ({
           <input
             value={group.supplier_name}
             onChange={(event) =>
-              onChange({ ...group, supplier_name: event.target.value })
+              updateSupplierAddress({ supplier_name: event.target.value })
             }
             placeholder="Nom du fournisseur"
-            className="mt-3 w-full rounded-lg border border-transparent px-2 py-2 text-sm outline-none focus:border-[#4B7312]"
+            className={`mt-3 w-full ${purchaseOrderFieldClass}`}
           />
 
-          <label className="mt-3 block">
-            <span className="text-sm font-black uppercase text-[#1f6b24]">
-              Adresse
-            </span>
-            <textarea
-              value={group.supplier_address_snapshot}
-              onChange={(event) =>
-                onChange({
-                  ...group,
-                  supplier_address_snapshot: event.target.value,
-                })
-              }
-              className="mt-2 min-h-28 w-full resize-none rounded-lg border border-transparent p-2 text-sm leading-6 text-slate-900 outline-none focus:border-[#4B7312]"
-            />
-          </label>
+          <div className="mt-3 grid gap-3">
+            <label className="block">
+              <span className="text-sm font-black uppercase text-[#1f6b24]">
+                No et rue
+              </span>
+              <input
+                value={group.supplier_address_street}
+                onChange={(event) =>
+                  updateSupplierAddress({
+                    supplier_address_street: event.target.value,
+                  })
+                }
+                className={`mt-2 w-full ${purchaseOrderFieldClass}`}
+              />
+            </label>
+
+            <label className="block">
+              <span className="text-sm font-black uppercase text-[#1f6b24]">
+                Ville
+              </span>
+              <input
+                value={group.supplier_city}
+                onChange={(event) =>
+                  updateSupplierAddress({ supplier_city: event.target.value })
+                }
+                className={`mt-2 w-full ${purchaseOrderFieldClass}`}
+              />
+            </label>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block">
+                <span className="text-sm font-black uppercase text-[#1f6b24]">
+                  Code postal
+                </span>
+                <input
+                  value={group.supplier_postal_code}
+                  onChange={(event) =>
+                    updateSupplierAddress({
+                      supplier_postal_code: event.target.value,
+                    })
+                  }
+                  className={`mt-2 w-full ${purchaseOrderFieldClass}`}
+                />
+              </label>
+
+              <label className="block">
+                <span className="text-sm font-black uppercase text-[#1f6b24]">
+                  Province
+                </span>
+                <input
+                  value={group.supplier_province}
+                  onChange={(event) =>
+                    updateSupplierAddress({
+                      supplier_province: event.target.value,
+                    })
+                  }
+                  className={`mt-2 w-full ${purchaseOrderFieldClass}`}
+                />
+              </label>
+            </div>
+
+            <label className="block">
+              <span className="text-sm font-black uppercase text-[#1f6b24]">
+                Pays
+              </span>
+              <input
+                value={group.supplier_country}
+                onChange={(event) =>
+                  updateSupplierAddress({
+                    supplier_country: event.target.value,
+                  })
+                }
+                className={`mt-2 w-full ${purchaseOrderFieldClass}`}
+              />
+            </label>
+          </div>
 
           <label className="mt-3 block border-t border-[#d2dfd2] pt-3">
             <span className="text-sm font-black uppercase text-[#1f6b24]">
@@ -276,7 +412,7 @@ const PurchaseOrderDocument = ({
                 onChange({ ...group, supplier_phone: event.target.value })
               }
               placeholder="Numéro du fournisseur"
-              className="mt-2 w-full rounded-lg border border-transparent px-2 py-2 text-sm outline-none focus:border-[#4B7312]"
+              className={`mt-2 w-full ${purchaseOrderFieldClass}`}
             />
           </label>
         </section>
@@ -291,22 +427,40 @@ const PurchaseOrderDocument = ({
                 shipping_address_snapshot: event.target.value,
               })
             }
-            className="mt-4 min-h-32 w-full resize-none rounded-lg border border-transparent p-2 text-sm leading-6 text-slate-900 outline-none focus:border-[#4B7312]"
+            className={`mt-4 min-h-32 w-full resize-none leading-6 ${purchaseOrderFieldClass}`}
           />
 
           <div className="mt-4 border-t border-[#d2dfd2] pt-4">
-            <label className="block">
-              <span className="text-lg font-black text-[#1f6b24]">
-                Acheteur
-              </span>
-              <input
-                value={group.buyer_name}
-                onChange={(event) =>
-                  onChange({ ...group, buyer_name: event.target.value })
-                }
-                className="mt-2 w-full rounded-lg border border-transparent px-2 py-2 text-sm outline-none focus:border-[#4B7312]"
-              />
-            </label>
+            <h3 className="text-lg font-black text-[#1f6b24]">Acheteur</h3>
+
+            <div className="mt-3 grid gap-3">
+              <label className="block">
+                <span className="text-sm font-black uppercase text-[#1f6b24]">
+                  Nom
+                </span>
+                <input
+                  value={group.buyer_name}
+                  onChange={(event) =>
+                    onChange({ ...group, buyer_name: event.target.value })
+                  }
+                  className={`mt-2 w-full ${purchaseOrderFieldClass}`}
+                />
+              </label>
+
+              <label className="block">
+                <span className="text-sm font-black uppercase text-[#1f6b24]">
+                  Courriel
+                </span>
+                <input
+                  type="email"
+                  value={group.buyer_email}
+                  onChange={(event) =>
+                    onChange({ ...group, buyer_email: event.target.value })
+                  }
+                  className={`mt-2 w-full ${purchaseOrderFieldClass}`}
+                />
+              </label>
+            </div>
           </div>
         </section>
 
@@ -322,7 +476,7 @@ const PurchaseOrderDocument = ({
                 onChange={(event) =>
                   onChange({ ...group, ordered_at: event.target.value })
                 }
-                className="min-w-0 flex-1 border-0 border-b border-[#d2dfd2] px-0 py-2 text-sm outline-none focus:border-[#4B7312]"
+                className={`min-w-0 flex-1 ${purchaseOrderFieldClass}`}
               />
               <button
                 type="button"
@@ -340,12 +494,34 @@ const PurchaseOrderDocument = ({
             <span className="text-lg font-black text-[#1f6b24]">
               Méthode de livraison
             </span>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              {deliveryMethodOptions.map((deliveryMethod) => {
+                const isSelected = group.delivery_method === deliveryMethod
+
+                return (
+                  <button
+                    key={deliveryMethod}
+                    type="button"
+                    onClick={() =>
+                      onChange({ ...group, delivery_method: deliveryMethod })
+                    }
+                    className={`rounded-lg border px-3 py-2 text-sm font-bold transition ${
+                      isSelected
+                        ? "border-[#4B7312] bg-[#4B7312] text-white"
+                        : "border-slate-300 bg-white text-slate-700 hover:border-[#4B7312] hover:bg-tertiary"
+                    }`}
+                  >
+                    {deliveryMethod}
+                  </button>
+                )
+              })}
+            </div>
             <input
               value={group.delivery_method}
               onChange={(event) =>
                 onChange({ ...group, delivery_method: event.target.value })
               }
-              className="mt-4 w-full border-0 border-b border-[#d2dfd2] px-0 py-2 text-sm outline-none focus:border-[#4B7312]"
+              className={`mt-4 w-full ${purchaseOrderFieldClass}`}
             />
           </label>
         </section>
@@ -422,7 +598,7 @@ const PurchaseOrderDocument = ({
                 Description
               </th>
               <th className="border border-[#d2dfd2] px-3 py-3">Quantité</th>
-              <th className="border border-[#d2dfd2] px-3 py-3">Unité</th>
+              <th className="border border-[#d2dfd2] px-3 py-3">Format</th>
               <th className="border border-[#d2dfd2] px-3 py-3">Prix</th>
               <th className="border border-[#d2dfd2] px-3 py-3">Montant</th>
             </tr>
@@ -446,7 +622,7 @@ const PurchaseOrderDocument = ({
                           item_code: event.target.value,
                         })
                       }
-                      className="w-full rounded-md border border-transparent px-2 py-2 text-sm outline-none focus:border-[#4B7312]"
+                      className={`w-full ${purchaseOrderTableFieldClass}`}
                     />
                   </td>
 
@@ -459,7 +635,7 @@ const PurchaseOrderDocument = ({
                           item_description: event.target.value,
                         })
                       }
-                      className="min-h-16 w-full resize-none rounded-md border border-transparent px-2 py-2 text-sm outline-none focus:border-[#4B7312]"
+                      className={`min-h-16 w-full resize-none ${purchaseOrderTableFieldClass}`}
                     />
                   </td>
 
@@ -475,7 +651,7 @@ const PurchaseOrderDocument = ({
                           ordered_quantity: event.target.value,
                         })
                       }
-                      className="w-full rounded-md border border-transparent px-2 py-2 text-sm outline-none focus:border-[#4B7312]"
+                      className={`w-full ${purchaseOrderTableFieldClass}`}
                     />
                   </td>
 
@@ -488,7 +664,7 @@ const PurchaseOrderDocument = ({
                           ordered_unit: event.target.value,
                         })
                       }
-                      className="w-full rounded-md border border-transparent px-2 py-2 text-sm outline-none focus:border-[#4B7312]"
+                      className={`w-full ${purchaseOrderTableFieldClass}`}
                     />
                   </td>
 
@@ -504,7 +680,7 @@ const PurchaseOrderDocument = ({
                           final_unit_price: event.target.value,
                         })
                       }
-                      className="w-full rounded-md border border-transparent px-2 py-2 text-sm outline-none focus:border-[#4B7312]"
+                      className={`w-full ${purchaseOrderTableFieldClass}`}
                     />
                   </td>
 
@@ -545,7 +721,7 @@ const PurchaseOrderDocument = ({
           onChange={(event) =>
             onChange({ ...group, purchase_note: event.target.value })
           }
-          className="mt-2 min-h-20 w-full rounded-lg border border-[#d2dfd2] px-3 py-2 text-sm"
+          className={`mt-2 min-h-20 w-full ${purchaseOrderFieldClass}`}
         />
       </label>
     </section>
@@ -587,11 +763,6 @@ const BuyingProcess = () => {
         {
           ...createEmptyGroup(),
           shipping_address_snapshot: VEGIBEC_ADDRESS,
-          buyer_name: request.buyer_name
-            ? [request.buyer_name, request.buyer_surname]
-                .filter(Boolean)
-                .join(" ")
-            : "",
           ordered_at: getTodayDateInputValue(),
           items: (request.items ?? []).map(createItemFormFromRequestItem),
         },

@@ -4,6 +4,12 @@ import { useReceiptVoucher, type ReceiptVoucher } from "../../Contexts/ReceiptVo
 import { useBuying, type Supplier } from "../../Contexts/BuyingContext"
 import SuccesOverlay from "../SuccesOverlay"
 import vegibecLogo from "../../assets/vegibec.png"
+import {
+  buildSupplierAddressSnapshot,
+  DEFAULT_SUPPLIER_COUNTRY,
+  DEFAULT_SUPPLIER_PROVINCE,
+  parseSupplierAddressSnapshot,
+} from "../103--BuyingProcess/Utils/buyingHelpers"
 
 type ReceiptVoucherItemForm = {
   purchase_request_item_id: number
@@ -21,10 +27,17 @@ type ReceiptVoucherGroupForm = {
   purchase_order_id: number | null
   purchaseOrderItemsByRequestItemId: Record<number, PurchaseOrderItemSnapshot>
   pickupSupplierId: string
+  pickupName: string
   pickupFrom: string
+  pickupStreet: string
+  pickupCity: string
+  pickupPostalCode: string
+  pickupProvince: string
+  pickupCountry: string
   pickupPhone: string
   shippedTo: string
   buyerName: string
+  buyerEmail: string
   orderedAt: string
   receivedAt: string
   deliveryMethod: string
@@ -34,6 +47,7 @@ type ReceiptVoucherGroupForm = {
 
 type RequestItemWithReceiptDetails = {
   id: number
+  purchase_order_id?: number | string | null
   purchase_order_item_id?: number | null
   purchase_order_item?: PurchaseOrderItemSnapshot | null
   purchase_order?: PurchaseOrderSnapshot | null
@@ -45,21 +59,45 @@ type RequestItemWithReceiptDetails = {
   ordered_quantity?: number | string | null
   quantity_format: string | null
   ordered_unit?: string | null
+  remaining_quantity?: number | string | null
+  already_received_quantity?: number | string | null
+  supplier_id?: number | string | null
+  supplier_name?: string | null
+  supplier?: string | null
+  supplier_address_snapshot?: string | null
+  supplier_phone?: string | null
+  ordered_at?: string | null
+  purchased_at?: string | null
+  delivery_method?: string | null
+  shipping_address_snapshot?: string | null
 }
 
 type PurchaseOrderItemSnapshot = {
-  id?: number | null
-  purchase_request_item_id?: number | null
+  id?: number | string | null
+  purchase_order_id?: number | string | null
+  purchase_request_item_id?: number | string | null
+  purchase_order_reference?: string | null
   item_code?: string | null
   item_description?: string | null
   ordered_quantity?: number | string | null
   ordered_unit?: string | null
+  remaining_quantity?: number | string | null
+  already_received_quantity?: number | string | null
+  supplier_id?: number | string | null
+  supplier_name?: string | null
+  supplier?: string | null
+  supplier_address_snapshot?: string | null
+  supplier_phone?: string | null
+  ordered_at?: string | null
+  purchased_at?: string | null
+  delivery_method?: string | null
+  shipping_address_snapshot?: string | null
   purchase_order?: PurchaseOrderSnapshot | null
 }
 
 type PurchaseOrderSnapshot = {
-  id?: number | null
-  supplier_id?: number | null
+  id?: number | string | null
+  supplier_id?: number | string | null
   supplier_name?: string | null
   supplier?: string | null
   supplier_address_snapshot?: string | null
@@ -77,6 +115,7 @@ type PurchaseOrderSnapshot = {
 type ReceiptVoucherRequestWithPurchaseOrder = {
   purchase_order?: PurchaseOrderSnapshot | null
   purchase_orders?: PurchaseOrderSnapshot[] | null
+  purchase_order_items?: PurchaseOrderItemSnapshot[] | null
   items?: RequestItemWithReceiptDetails[]
   purchased_by_name?: string | null
   purchased_by_surname?: string | null
@@ -104,7 +143,16 @@ const VEGIBEC_ADDRESS = [
   "4505960566",
 ].join("\n")
 
-const DEFAULT_RECEIVED_BY_USER_ID = 1
+const DEFAULT_RECEIVED_BY_NAME = "Ricardo Molière"
+const DEFAULT_RECEIVED_BY_EMAIL = "achats@vegibec.com"
+
+const receiptVoucherFieldClass =
+  "rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-[#4B7312] focus:ring-4 focus:ring-[#96c61c]/20"
+
+const receiptVoucherTableFieldClass =
+  "rounded-md border border-slate-300 bg-white px-2 py-2 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-[#4B7312] focus:ring-4 focus:ring-[#96c61c]/20"
+
+const deliveryMethodOptions = ["Ramassé", "Livré"] as const
 
 const getTodayDateInputValue = () => {
   const today = new Date()
@@ -128,38 +176,153 @@ const toRoundedNumber = (value: string, decimals = 4) => {
   return Math.round((number + Number.EPSILON) * factor) / factor
 }
 
-const getFullName = (...parts: (string | null | undefined)[]) =>
-  parts.filter(Boolean).join(" ")
+const toOptionalNumber = (value: number | string | null | undefined) => {
+  if (value === null || value === undefined || value === "") return null
 
-const getSupplierAddress = (supplier: Supplier) =>
-  [
-    supplier.name,
+  const number = Number(value)
+
+  return Number.isFinite(number) ? number : null
+}
+
+const toIdKey = (value: number | string | null | undefined) => {
+  const number = toOptionalNumber(value)
+
+  return number === null ? null : String(number)
+}
+
+const getSupplierAddressFields = (supplier: Supplier) => {
+  const parsedAddress = parseSupplierAddressSnapshot(
     supplier.address_snapshot,
-    supplier.city,
-    supplier.province,
-    supplier.postal_code,
-    supplier.country,
-  ]
-    .filter(Boolean)
-    .join("\n")
+    supplier.name,
+  )
 
-const getPurchaseOrderAddress = (purchaseOrder: PurchaseOrderSnapshot) =>
-  purchaseOrder.supplier_address_snapshot ||
-  [purchaseOrder.supplier_name ?? purchaseOrder.supplier]
-    .filter(Boolean)
-    .join("\n")
+  return {
+    pickupStreet: parsedAddress.street || supplier.address_snapshot || "",
+    pickupCity: parsedAddress.city || supplier.city || "",
+    pickupPostalCode: parsedAddress.postalCode || supplier.postal_code || "",
+    pickupProvince:
+      parsedAddress.province || supplier.province || DEFAULT_SUPPLIER_PROVINCE,
+    pickupCountry:
+      parsedAddress.country || supplier.country || DEFAULT_SUPPLIER_COUNTRY,
+  }
+}
 
-const getPurchaseOrderBuyerName = (purchaseOrder: PurchaseOrderSnapshot) =>
-  purchaseOrder.buyer_name ||
-  getFullName(purchaseOrder.purchased_by_name, purchaseOrder.purchased_by_surname)
+const buildGroupPickupFromSnapshot = (
+  group: Pick<
+    ReceiptVoucherGroupForm,
+    | "pickupName"
+    | "pickupStreet"
+    | "pickupCity"
+    | "pickupPostalCode"
+    | "pickupProvince"
+    | "pickupCountry"
+  >,
+) =>
+  buildSupplierAddressSnapshot({
+    name: group.pickupName,
+    street: group.pickupStreet,
+    city: group.pickupCity,
+    postalCode: group.pickupPostalCode,
+    province: group.pickupProvince,
+    country: group.pickupCountry,
+  })
 
 const getItemPurchaseOrder = (item: RequestItemWithReceiptDetails) =>
   item.purchase_order ?? item.purchase_order_item?.purchase_order ?? null
 
+const getPurchaseOrderId = (purchaseOrder: PurchaseOrderSnapshot | null) =>
+  toIdKey(purchaseOrder?.id)
+
+const getPurchaseOrderItemRequestItemId = (
+  purchaseOrderItem: PurchaseOrderItemSnapshot,
+) => toOptionalNumber(purchaseOrderItem.purchase_request_item_id)
+
+const getPurchaseOrderItemOrderId = (
+  purchaseOrderItem?: PurchaseOrderItemSnapshot | null,
+) => toIdKey(purchaseOrderItem?.purchase_order_id ?? purchaseOrderItem?.purchase_order?.id)
+
+const createPurchaseOrderFromItem = (
+  item: RequestItemWithReceiptDetails,
+): PurchaseOrderSnapshot | null => {
+  const nestedPurchaseOrder = getItemPurchaseOrder(item)
+  if (nestedPurchaseOrder) return nestedPurchaseOrder
+
+  const purchaseOrderItem = item.purchase_order_item
+  const purchaseOrderId = toIdKey(
+    item.purchase_order_id ?? purchaseOrderItem?.purchase_order_id,
+  )
+
+  if (!purchaseOrderId) return null
+
+  return {
+    id: purchaseOrderId,
+    supplier_id: item.supplier_id ?? purchaseOrderItem?.supplier_id,
+    supplier_name: item.supplier_name ?? purchaseOrderItem?.supplier_name,
+    supplier: item.supplier ?? purchaseOrderItem?.supplier,
+    supplier_address_snapshot:
+      item.supplier_address_snapshot ??
+      purchaseOrderItem?.supplier_address_snapshot,
+    supplier_phone: item.supplier_phone ?? purchaseOrderItem?.supplier_phone,
+    ordered_at: item.ordered_at ?? purchaseOrderItem?.ordered_at,
+    purchased_at: item.purchased_at ?? purchaseOrderItem?.purchased_at,
+    delivery_method: item.delivery_method ?? purchaseOrderItem?.delivery_method,
+    shipping_address_snapshot:
+      item.shipping_address_snapshot ??
+      purchaseOrderItem?.shipping_address_snapshot,
+  }
+}
+
+const createPurchaseOrderFromPurchaseOrderItem = (
+  purchaseOrderItem: PurchaseOrderItemSnapshot,
+): PurchaseOrderSnapshot | null => {
+  if (purchaseOrderItem.purchase_order) return purchaseOrderItem.purchase_order
+
+  const purchaseOrderId = toIdKey(purchaseOrderItem.purchase_order_id)
+  if (!purchaseOrderId) return null
+
+  return {
+    id: purchaseOrderId,
+    supplier_id: purchaseOrderItem.supplier_id,
+    supplier_name: purchaseOrderItem.supplier_name,
+    supplier: purchaseOrderItem.supplier,
+    supplier_address_snapshot: purchaseOrderItem.supplier_address_snapshot,
+    supplier_phone: purchaseOrderItem.supplier_phone,
+    ordered_at: purchaseOrderItem.ordered_at,
+    purchased_at: purchaseOrderItem.purchased_at,
+    delivery_method: purchaseOrderItem.delivery_method,
+    shipping_address_snapshot: purchaseOrderItem.shipping_address_snapshot,
+    purchase_order_items: [purchaseOrderItem],
+  }
+}
+
+const mergePurchaseOrderDefaults = (
+  current: PurchaseOrderSnapshot,
+  incoming: PurchaseOrderSnapshot,
+): PurchaseOrderSnapshot => ({
+  ...incoming,
+  ...current,
+  id: current.id ?? incoming.id,
+  supplier_id: current.supplier_id ?? incoming.supplier_id,
+  supplier_name: current.supplier_name ?? incoming.supplier_name,
+  supplier: current.supplier ?? incoming.supplier,
+  supplier_address_snapshot:
+    current.supplier_address_snapshot ?? incoming.supplier_address_snapshot,
+  supplier_phone: current.supplier_phone ?? incoming.supplier_phone,
+  ordered_at: current.ordered_at ?? incoming.ordered_at,
+  purchased_at: current.purchased_at ?? incoming.purchased_at,
+  delivery_method: current.delivery_method ?? incoming.delivery_method,
+  shipping_address_snapshot:
+    current.shipping_address_snapshot ?? incoming.shipping_address_snapshot,
+  purchase_order_items: [
+    ...(incoming.purchase_order_items ?? []),
+    ...(current.purchase_order_items ?? []),
+  ],
+})
+
 const getKnownPurchaseOrders = (
   request: ReceiptVoucherRequestWithPurchaseOrder,
 ) => {
-  const purchaseOrders = request.purchase_orders?.length
+  const explicitPurchaseOrders = request.purchase_orders?.length
     ? request.purchase_orders
     : request.purchase_order
       ? [request.purchase_order]
@@ -167,13 +330,27 @@ const getKnownPurchaseOrders = (
 
   const purchaseOrdersById = new Map<number, PurchaseOrderSnapshot>()
 
-  purchaseOrders.forEach((purchaseOrder) => {
-    if (purchaseOrder?.id) purchaseOrdersById.set(purchaseOrder.id, purchaseOrder)
+  const addPurchaseOrder = (purchaseOrder: PurchaseOrderSnapshot | null) => {
+    const purchaseOrderId = getPurchaseOrderId(purchaseOrder)
+    if (!purchaseOrder || !purchaseOrderId) return
+
+    const existing = purchaseOrdersById.get(Number(purchaseOrderId))
+    purchaseOrdersById.set(
+      Number(purchaseOrderId),
+      existing
+        ? mergePurchaseOrderDefaults(existing, purchaseOrder)
+        : purchaseOrder,
+    )
+  }
+
+  explicitPurchaseOrders.forEach(addPurchaseOrder)
+
+  request.purchase_order_items?.forEach((purchaseOrderItem) => {
+    addPurchaseOrder(createPurchaseOrderFromPurchaseOrderItem(purchaseOrderItem))
   })
 
   request.items?.forEach((item) => {
-    const purchaseOrder = getItemPurchaseOrder(item)
-    if (purchaseOrder?.id) purchaseOrdersById.set(purchaseOrder.id, purchaseOrder)
+    addPurchaseOrder(createPurchaseOrderFromItem(item))
   })
 
   return [...purchaseOrdersById.values()]
@@ -183,10 +360,11 @@ const getSupplierFromPurchaseOrder = (
   purchaseOrder: PurchaseOrderSnapshot | null,
   suppliers: Supplier[],
 ) => {
-  if (!purchaseOrder?.supplier_id) return null
+  const supplierId = toOptionalNumber(purchaseOrder?.supplier_id)
+  if (!supplierId) return null
 
   return (
-    suppliers.find((supplier) => supplier.id === purchaseOrder.supplier_id) ??
+    suppliers.find((supplier) => supplier.id === supplierId) ??
     null
   )
 }
@@ -198,11 +376,15 @@ const createItemFromRequest = (
   const purchaseOrderItem = purchaseOrderItemOverride ?? item.purchase_order_item
   const quantity =
     purchaseOrderItem?.ordered_quantity ?? item.ordered_quantity ?? item.quantity ?? ""
+  const receivedQuantity =
+    purchaseOrderItem?.remaining_quantity ??
+    item.remaining_quantity ??
+    quantity
 
   return {
     purchase_request_item_id: item.id,
     purchase_order_item_id:
-      item.purchase_order_item_id ?? purchaseOrderItem?.id ?? null,
+      toOptionalNumber(item.purchase_order_item_id ?? purchaseOrderItem?.id),
     code: purchaseOrderItem?.item_code ?? item.item_code ?? item.code ?? "",
     description:
       purchaseOrderItem?.item_description ??
@@ -212,7 +394,7 @@ const createItemFromRequest = (
     quantity: String(quantity),
     quantity_format:
       purchaseOrderItem?.ordered_unit ?? item.ordered_unit ?? item.quantity_format ?? "",
-    received_quantity: String(quantity),
+    received_quantity: String(receivedQuantity),
     comment: "",
   }
 }
@@ -231,26 +413,64 @@ const createGroupFromPurchaseOrder = ({
   purchaseOrderItemsByRequestItemId?: Map<number, PurchaseOrderItemSnapshot>
 }): ReceiptVoucherGroupForm => {
   const purchaseOrderSupplier = getSupplierFromPurchaseOrder(purchaseOrder, suppliers)
+  const pickupName =
+    purchaseOrder?.supplier_name ??
+    purchaseOrder?.supplier ??
+    purchaseOrderSupplier?.name ??
+    ""
+  const parsedPurchaseOrderAddress = parseSupplierAddressSnapshot(
+    purchaseOrder?.supplier_address_snapshot,
+    pickupName,
+  )
+  const supplierAddressFields = purchaseOrderSupplier
+    ? getSupplierAddressFields(purchaseOrderSupplier)
+    : null
+  const pickupStreet =
+    parsedPurchaseOrderAddress.street || supplierAddressFields?.pickupStreet || ""
+  const pickupCity =
+    parsedPurchaseOrderAddress.city || supplierAddressFields?.pickupCity || ""
+  const pickupPostalCode =
+    parsedPurchaseOrderAddress.postalCode ||
+    supplierAddressFields?.pickupPostalCode ||
+    ""
+  const pickupProvince =
+    parsedPurchaseOrderAddress.province ||
+    supplierAddressFields?.pickupProvince ||
+    DEFAULT_SUPPLIER_PROVINCE
+  const pickupCountry =
+    parsedPurchaseOrderAddress.country ||
+    supplierAddressFields?.pickupCountry ||
+    DEFAULT_SUPPLIER_COUNTRY
 
   return {
     localId: crypto.randomUUID(),
-    purchase_order_id: purchaseOrder?.id ?? null,
+    purchase_order_id: toOptionalNumber(purchaseOrder?.id),
     purchaseOrderItemsByRequestItemId: Object.fromEntries(
       purchaseOrderItemsByRequestItemId,
     ),
     pickupSupplierId: purchaseOrder?.supplier_id ? String(purchaseOrder.supplier_id) : "",
-    pickupFrom:
-      getPurchaseOrderAddress(purchaseOrder ?? {}) ||
-      (purchaseOrderSupplier ? getSupplierAddress(purchaseOrderSupplier) : ""),
+    pickupName,
+    pickupFrom: buildSupplierAddressSnapshot({
+      name: pickupName,
+      street: pickupStreet,
+      city: pickupCity,
+      postalCode: pickupPostalCode,
+      province: pickupProvince,
+      country: pickupCountry,
+    }),
+    pickupStreet,
+    pickupCity,
+    pickupPostalCode,
+    pickupProvince,
+    pickupCountry,
     pickupPhone:
       purchaseOrder?.supplier_phone ??
       purchaseOrderSupplier?.phone ??
       purchaseOrderSupplier?.supplier_phone ??
       "",
     shippedTo: purchaseOrder?.shipping_address_snapshot || VEGIBEC_ADDRESS,
-    buyerName:
-      getPurchaseOrderBuyerName(purchaseOrder ?? {}) ||
-      getFullName(request.purchased_by_name, request.purchased_by_surname),
+    buyerName: DEFAULT_RECEIVED_BY_NAME,
+    buyerEmail: DEFAULT_RECEIVED_BY_EMAIL,
     orderedAt:
       purchaseOrder?.ordered_at?.slice(0, 10) ??
       purchaseOrder?.purchased_at?.slice(0, 10) ??
@@ -273,10 +493,17 @@ const createEmptyGroup = (): ReceiptVoucherGroupForm => ({
   purchase_order_id: null,
   purchaseOrderItemsByRequestItemId: {},
   pickupSupplierId: "",
+  pickupName: "",
   pickupFrom: "",
+  pickupStreet: "",
+  pickupCity: "",
+  pickupPostalCode: "",
+  pickupProvince: DEFAULT_SUPPLIER_PROVINCE,
+  pickupCountry: DEFAULT_SUPPLIER_COUNTRY,
   pickupPhone: "",
   shippedTo: VEGIBEC_ADDRESS,
-  buyerName: "",
+  buyerName: DEFAULT_RECEIVED_BY_NAME,
+  buyerEmail: DEFAULT_RECEIVED_BY_EMAIL,
   orderedAt: "",
   receivedAt: getTodayDateInputValue(),
   deliveryMethod: "",
@@ -308,10 +535,22 @@ const createGroupsFromRequest = (
       PurchaseOrderItemSnapshot
     >()
 
-    purchaseOrder.purchase_order_items?.forEach((purchaseOrderItem) => {
-      if (purchaseOrderItem.purchase_request_item_id) {
+    const purchaseOrderId = getPurchaseOrderId(purchaseOrder)
+    const allPurchaseOrderItems = [
+      ...(purchaseOrder.purchase_order_items ?? []),
+      ...(request.purchase_order_items ?? []).filter(
+        (purchaseOrderItem) =>
+          getPurchaseOrderItemOrderId(purchaseOrderItem) === purchaseOrderId,
+      ),
+    ]
+
+    allPurchaseOrderItems.forEach((purchaseOrderItem) => {
+      const purchaseRequestItemId =
+        getPurchaseOrderItemRequestItemId(purchaseOrderItem)
+
+      if (purchaseRequestItemId) {
         purchaseOrderItemsByRequestItemId.set(
-          purchaseOrderItem.purchase_request_item_id,
+          purchaseRequestItemId,
           purchaseOrderItem,
         )
       }
@@ -320,7 +559,9 @@ const createGroupsFromRequest = (
     const itemsForPurchaseOrder = requestItems.filter((item) => {
       const itemPurchaseOrder = getItemPurchaseOrder(item)
       const itemPurchaseOrderId =
-        itemPurchaseOrder?.id ?? item.purchase_order_item?.purchase_order?.id
+        getPurchaseOrderId(itemPurchaseOrder) ??
+        getPurchaseOrderItemOrderId(item.purchase_order_item) ??
+        toIdKey(item.purchase_order_id)
 
       if (purchaseOrderItemsByRequestItemId.has(item.id)) {
         return true
@@ -330,7 +571,7 @@ const createGroupsFromRequest = (
         return purchaseOrders.length === 1
       }
 
-      return itemPurchaseOrderId === purchaseOrder.id
+      return itemPurchaseOrderId === purchaseOrderId
     })
 
     return createGroupFromPurchaseOrder({
@@ -379,12 +620,42 @@ const ReceiptVoucherDocument = ({
     [group.items],
   )
 
+  const updatePickupAddress = (
+    update: Partial<
+      Pick<
+        ReceiptVoucherGroupForm,
+        | "pickupName"
+        | "pickupStreet"
+        | "pickupCity"
+        | "pickupPostalCode"
+        | "pickupProvince"
+        | "pickupCountry"
+      >
+    >,
+  ) => {
+    const nextGroup = {
+      ...group,
+      ...update,
+    }
+
+    onChange({
+      ...nextGroup,
+      pickupFrom: buildGroupPickupFromSnapshot(nextGroup),
+    })
+  }
+
   const selectPickupSupplier = (supplierId: string) => {
     if (!supplierId) {
       onChange({
         ...group,
         pickupSupplierId: "",
+        pickupName: "",
         pickupFrom: "",
+        pickupStreet: "",
+        pickupCity: "",
+        pickupPostalCode: "",
+        pickupProvince: DEFAULT_SUPPLIER_PROVINCE,
+        pickupCountry: DEFAULT_SUPPLIER_COUNTRY,
         pickupPhone: "",
       })
       return
@@ -395,11 +666,21 @@ const ReceiptVoucherDocument = ({
     )
 
     if (!supplier) return
+    const supplierAddressFields = getSupplierAddressFields(supplier)
 
     onChange({
       ...group,
       pickupSupplierId: supplierId,
-      pickupFrom: getSupplierAddress(supplier),
+      pickupName: supplier.name,
+      ...supplierAddressFields,
+      pickupFrom: buildSupplierAddressSnapshot({
+        name: supplier.name,
+        street: supplierAddressFields.pickupStreet,
+        city: supplierAddressFields.pickupCity,
+        postalCode: supplierAddressFields.pickupPostalCode,
+        province: supplierAddressFields.pickupProvince,
+        country: supplierAddressFields.pickupCountry,
+      }),
       pickupPhone: supplier.phone ?? supplier.supplier_phone ?? "",
     })
   }
@@ -498,7 +779,7 @@ const ReceiptVoucherDocument = ({
           <select
             value={group.pickupSupplierId}
             onChange={(event) => selectPickupSupplier(event.target.value)}
-            className="mt-4 w-full rounded-lg border border-[#d2dfd2] px-3 py-2 text-sm"
+            className={`mt-4 w-full ${receiptVoucherFieldClass}`}
           >
             <option value="">Sélectionner un fournisseur</option>
             {suppliers.map((supplier) => (
@@ -508,18 +789,85 @@ const ReceiptVoucherDocument = ({
             ))}
           </select>
 
-          <label className="mt-3 block">
-            <span className="text-sm font-black uppercase text-[#1f6b24]">
-              Adresse
-            </span>
-            <textarea
-              value={group.pickupFrom}
-              onChange={(event) =>
-                onChange({ ...group, pickupFrom: event.target.value })
-              }
-              className="mt-2 min-h-28 w-full resize-none rounded-lg border border-transparent p-2 text-sm leading-6 text-slate-900 outline-none focus:border-[#4B7312]"
-            />
-          </label>
+          <input
+            value={group.pickupName}
+            onChange={(event) =>
+              updatePickupAddress({ pickupName: event.target.value })
+            }
+            placeholder="Nom du fournisseur"
+            className={`mt-3 w-full ${receiptVoucherFieldClass}`}
+          />
+
+          <div className="mt-3 grid gap-3">
+            <label className="block">
+              <span className="text-sm font-black uppercase text-[#1f6b24]">
+                No et rue
+              </span>
+              <input
+                value={group.pickupStreet}
+                onChange={(event) =>
+                  updatePickupAddress({ pickupStreet: event.target.value })
+                }
+                className={`mt-2 w-full ${receiptVoucherFieldClass}`}
+              />
+            </label>
+
+            <label className="block">
+              <span className="text-sm font-black uppercase text-[#1f6b24]">
+                Ville
+              </span>
+              <input
+                value={group.pickupCity}
+                onChange={(event) =>
+                  updatePickupAddress({ pickupCity: event.target.value })
+                }
+                className={`mt-2 w-full ${receiptVoucherFieldClass}`}
+              />
+            </label>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block">
+                <span className="text-sm font-black uppercase text-[#1f6b24]">
+                  Code postal
+                </span>
+                <input
+                  value={group.pickupPostalCode}
+                  onChange={(event) =>
+                    updatePickupAddress({
+                      pickupPostalCode: event.target.value,
+                    })
+                  }
+                  className={`mt-2 w-full ${receiptVoucherFieldClass}`}
+                />
+              </label>
+
+              <label className="block">
+                <span className="text-sm font-black uppercase text-[#1f6b24]">
+                  Province
+                </span>
+                <input
+                  value={group.pickupProvince}
+                  onChange={(event) =>
+                    updatePickupAddress({ pickupProvince: event.target.value })
+                  }
+                  className={`mt-2 w-full ${receiptVoucherFieldClass}`}
+                />
+              </label>
+            </div>
+
+            <label className="block">
+              <span className="text-sm font-black uppercase text-[#1f6b24]">
+                Pays
+              </span>
+              <input
+                value={group.pickupCountry}
+                onChange={(event) =>
+                  updatePickupAddress({ pickupCountry: event.target.value })
+                }
+                className={`mt-2 w-full ${receiptVoucherFieldClass}`}
+              />
+            </label>
+          </div>
 
           <label className="mt-3 block border-t border-[#d2dfd2] pt-3">
             <span className="text-sm font-black uppercase text-[#1f6b24]">
@@ -531,7 +879,7 @@ const ReceiptVoucherDocument = ({
                 onChange({ ...group, pickupPhone: event.target.value })
               }
               placeholder="Numéro du fournisseur"
-              className="mt-2 w-full rounded-lg border border-transparent px-2 py-2 text-sm outline-none focus:border-[#4B7312]"
+              className={`mt-2 w-full ${receiptVoucherFieldClass}`}
             />
           </label>
         </section>
@@ -543,22 +891,40 @@ const ReceiptVoucherDocument = ({
             onChange={(event) =>
               onChange({ ...group, shippedTo: event.target.value })
             }
-            className="mt-4 min-h-28 w-full resize-none rounded-lg border border-transparent p-2 text-sm leading-6 text-slate-900 outline-none focus:border-[#4B7312]"
+            className={`mt-4 min-h-28 w-full resize-none leading-6 ${receiptVoucherFieldClass}`}
           />
 
           <div className="mt-4 border-t border-[#d2dfd2] pt-4">
-            <label className="block">
-              <span className="text-lg font-black text-[#1f6b24]">
-                Acheteur
-              </span>
-              <input
-                value={group.buyerName}
-                onChange={(event) =>
-                  onChange({ ...group, buyerName: event.target.value })
-                }
-                className="mt-2 w-full rounded-lg border border-transparent px-2 py-2 text-sm text-slate-900 outline-none focus:border-[#4B7312]"
-              />
-            </label>
+            <h3 className="text-lg font-black text-[#1f6b24]">Acheteur</h3>
+
+            <div className="mt-3 grid gap-3">
+              <label className="block">
+                <span className="text-sm font-black uppercase text-[#1f6b24]">
+                  Nom
+                </span>
+                <input
+                  value={group.buyerName}
+                  onChange={(event) =>
+                    onChange({ ...group, buyerName: event.target.value })
+                  }
+                  className={`mt-2 w-full ${receiptVoucherFieldClass}`}
+                />
+              </label>
+
+              <label className="block">
+                <span className="text-sm font-black uppercase text-[#1f6b24]">
+                  Courriel
+                </span>
+                <input
+                  type="email"
+                  value={group.buyerEmail}
+                  onChange={(event) =>
+                    onChange({ ...group, buyerEmail: event.target.value })
+                  }
+                  className={`mt-2 w-full ${receiptVoucherFieldClass}`}
+                />
+              </label>
+            </div>
           </div>
         </section>
 
@@ -573,7 +939,7 @@ const ReceiptVoucherDocument = ({
               onChange={(event) =>
                 onChange({ ...group, orderedAt: event.target.value })
               }
-              className="mt-4 w-full border-0 border-b border-[#d2dfd2] px-0 py-2 text-sm outline-none focus:border-[#4B7312]"
+              className={`mt-4 w-full ${receiptVoucherFieldClass}`}
             />
           </label>
 
@@ -587,7 +953,7 @@ const ReceiptVoucherDocument = ({
               onChange={(event) =>
                 onChange({ ...group, receivedAt: event.target.value })
               }
-              className="mt-4 w-full border-0 border-b border-[#d2dfd2] px-0 py-2 text-sm outline-none focus:border-[#4B7312]"
+              className={`mt-4 w-full ${receiptVoucherFieldClass}`}
             />
           </label>
 
@@ -595,12 +961,34 @@ const ReceiptVoucherDocument = ({
             <span className="text-lg font-black text-[#1f6b24]">
               Méthode de livraison
             </span>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              {deliveryMethodOptions.map((deliveryMethod) => {
+                const isSelected = group.deliveryMethod === deliveryMethod
+
+                return (
+                  <button
+                    key={deliveryMethod}
+                    type="button"
+                    onClick={() =>
+                      onChange({ ...group, deliveryMethod: deliveryMethod })
+                    }
+                    className={`rounded-lg border px-3 py-2 text-sm font-bold transition ${
+                      isSelected
+                        ? "border-[#4B7312] bg-[#4B7312] text-white"
+                        : "border-slate-300 bg-white text-slate-700 hover:border-[#4B7312] hover:bg-tertiary"
+                    }`}
+                  >
+                    {deliveryMethod}
+                  </button>
+                )
+              })}
+            </div>
             <input
               value={group.deliveryMethod}
               onChange={(event) =>
                 onChange({ ...group, deliveryMethod: event.target.value })
               }
-              className="mt-4 w-full border-0 border-b border-[#d2dfd2] px-0 py-2 text-sm outline-none focus:border-[#4B7312]"
+              className={`mt-4 w-full ${receiptVoucherFieldClass}`}
             />
           </label>
         </section>
@@ -621,6 +1009,10 @@ const ReceiptVoucherDocument = ({
               requestItem.id,
             )
             const selected = selectedItemIds.has(requestItem.id)
+            const requestItemPreview = createItemFromRequest(
+              requestItem,
+              group.purchaseOrderItemsByRequestItemId[requestItem.id],
+            )
 
             return (
               <label
@@ -640,11 +1032,11 @@ const ReceiptVoucherDocument = ({
                 />
                 <div className="min-w-0">
                   <p className="font-semibold text-slate-900 wrap-anywhere">
-                    {createItemFromRequest(requestItem).description}
+                    {requestItemPreview.description}
                   </p>
                   <p className="text-sm text-slate-600">
-                    Quantité commandée: {createItemFromRequest(requestItem).quantity}{" "}
-                    {createItemFromRequest(requestItem).quantity_format}
+                    Quantité commandée: {requestItemPreview.quantity}{" "}
+                    {requestItemPreview.quantity_format}
                   </p>
                   {selectedInOtherGroup && (
                     <p className="mt-1 text-xs font-semibold text-orange-700">
@@ -694,7 +1086,7 @@ const ReceiptVoucherDocument = ({
                         code: event.target.value,
                       })
                     }
-                    className="w-full rounded-md border border-transparent px-2 py-2 text-sm outline-none focus:border-[#4B7312]"
+                    className={`w-full ${receiptVoucherTableFieldClass}`}
                   />
                 </td>
 
@@ -706,7 +1098,7 @@ const ReceiptVoucherDocument = ({
                         description: event.target.value,
                       })
                     }
-                    className="min-h-16 w-full resize-none rounded-md border border-transparent px-2 py-2 text-sm outline-none focus:border-[#4B7312]"
+                    className={`min-h-16 w-full resize-none ${receiptVoucherTableFieldClass}`}
                   />
                 </td>
 
@@ -722,7 +1114,7 @@ const ReceiptVoucherDocument = ({
                           quantity: event.target.value,
                         })
                       }
-                      className="min-w-0 flex-1 rounded-md border border-transparent px-2 py-2 text-sm outline-none focus:border-[#4B7312]"
+                      className={`min-w-0 flex-1 ${receiptVoucherTableFieldClass}`}
                     />
                     <span className="py-2 text-xs font-semibold text-slate-500">
                       {item.quantity_format}
@@ -741,7 +1133,7 @@ const ReceiptVoucherDocument = ({
                         received_quantity: event.target.value,
                       })
                     }
-                    className="w-full rounded-md border border-transparent px-2 py-2 text-sm outline-none focus:border-[#4B7312]"
+                    className={`w-full ${receiptVoucherTableFieldClass}`}
                   />
                 </td>
 
@@ -753,7 +1145,7 @@ const ReceiptVoucherDocument = ({
                         comment: event.target.value,
                       })
                     }
-                    className="min-h-16 w-full resize-none rounded-md border border-transparent px-2 py-2 text-sm outline-none focus:border-[#4B7312]"
+                    className={`min-h-16 w-full resize-none ${receiptVoucherTableFieldClass}`}
                   />
                 </td>
               </tr>
@@ -783,7 +1175,7 @@ const ReceiptVoucherDocument = ({
             onChange={(event) =>
               onChange({ ...group, receiptNote: event.target.value })
             }
-            className="mt-2 min-h-20 w-full rounded-lg border border-[#d2dfd2] px-3 py-2 text-sm"
+            className={`mt-2 min-h-20 w-full ${receiptVoucherFieldClass}`}
           />
         </label>
       </div>
@@ -914,8 +1306,14 @@ const ReceiptVouchersCreation = () => {
     for (const group of activeGroups) {
       const result = await createReceiptVoucher(Number(id), token, {
         purchase_request_id: receiptVoucherRequest.id,
-        received_by_user_id: DEFAULT_RECEIVED_BY_USER_ID,
+        supplier_id: toOptionalNumber(group.pickupSupplierId),
+        supplier_name: toNullableText(group.pickupName),
+        supplier_address_snapshot: toNullableText(group.pickupFrom),
+        supplier_phone: toNullableText(group.pickupPhone),
+        received_by_name: group.buyerName.trim() || DEFAULT_RECEIVED_BY_NAME,
+        received_by_email: group.buyerEmail.trim() || DEFAULT_RECEIVED_BY_EMAIL,
         received_at: group.receivedAt || null,
+        delivery_method: toNullableText(group.deliveryMethod),
         receipt_note: toNullableText(group.receiptNote),
         items: group.items.map((item) => ({
           purchase_request_item_id: item.purchase_request_item_id,

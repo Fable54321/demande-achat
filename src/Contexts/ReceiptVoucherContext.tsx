@@ -20,8 +20,14 @@ export type CreateReceiptVoucherItemPayload = {
 
 export type CreateReceiptVoucherPayload = {
   purchase_request_id: number
-  received_by_user_id: number
+  supplier_id?: number | null
+  supplier_name?: string | null
+  supplier_address_snapshot?: string | null
+  supplier_phone?: string | null
+  received_by_name: string
+  received_by_email: string
   received_at?: string | null
+  delivery_method?: string | null
   receipt_note?: string | null
   items: CreateReceiptVoucherItemPayload[]
 }
@@ -32,7 +38,14 @@ export type ReceiptVoucher = {
   receipt_voucher_reference: string
   receipt_voucher_sequence: number
   received_by_user_id: number | null
+  supplier_id?: number | null
+  supplier_name?: string | null
+  supplier_address_snapshot?: string | null
+  supplier_phone?: string | null
+  received_by_name?: string | null
+  received_by_email?: string | null
   received_at: string
+  delivery_method?: string | null
   receipt_note: string | null
   receipt_document_keys: string[]
   status: string

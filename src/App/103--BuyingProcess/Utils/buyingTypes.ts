@@ -16,6 +16,11 @@ export type PurchaseOrderGroupForm = {
   supplier_id: number | null
   supplier_name: string
   supplier_address_snapshot: string
+  supplier_address_street: string
+  supplier_city: string
+  supplier_postal_code: string
+  supplier_province: string
+  supplier_country: string
   supplier_phone: string
 
   purchase_note: string
