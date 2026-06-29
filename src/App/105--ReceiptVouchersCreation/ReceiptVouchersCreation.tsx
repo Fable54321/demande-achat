@@ -337,6 +337,10 @@ const isRequestItemInReceiptGroup = (
   item: RequestItemWithReceiptDetails,
   group: ReceiptVoucherGroupForm,
 ) => {
+  if (!group.purchase_order_id && group.items.length === 0) {
+    return true
+  }
+
   if (group.purchaseOrderItemsByRequestItemId[item.id]) {
     return true
   }
@@ -662,6 +666,47 @@ const createEmptyGroup = (): ReceiptVoucherGroupForm => ({
   items: [],
 })
 
+const createReceiptGroupForRequestItem = (
+  group: ReceiptVoucherGroupForm,
+  requestItem: RequestItemWithReceiptDetails,
+  purchaseOrderItem: PurchaseOrderItemSnapshot | null | undefined,
+  suppliers: Supplier[],
+) => {
+  if (group.purchase_order_id || group.items.length > 0) {
+    return group
+  }
+
+  const purchaseOrder = createPurchaseOrderFromItem(requestItem)
+
+  if (!purchaseOrder) {
+    return group
+  }
+
+  const purchaseOrderItemsByRequestItemId = new Map<number, PurchaseOrderItemSnapshot>()
+  const purchaseRequestItemId = getPurchaseOrderItemRequestItemId(
+    purchaseOrderItem ?? requestItem.purchase_order_item ?? {},
+  )
+
+  if (purchaseOrderItem && purchaseRequestItemId) {
+    purchaseOrderItemsByRequestItemId.set(purchaseRequestItemId, purchaseOrderItem)
+  }
+
+  return {
+    ...createGroupFromPurchaseOrder({
+      purchaseOrder,
+      request: { items: [] },
+      suppliers,
+      items: [],
+      purchaseOrderItemsByRequestItemId,
+    }),
+    localId: group.localId,
+    receivedAt: group.receivedAt,
+    buyerName: group.buyerName,
+    buyerEmail: group.buyerEmail,
+    receiptNote: group.receiptNote,
+  }
+}
+
 const createGroupsFromRequest = (
   request: ReceiptVoucherRequestWithPurchaseOrder,
   suppliers: Supplier[],
@@ -858,13 +903,23 @@ const ReceiptVoucherDocument = ({
       return
     }
 
+    const nextGroup = createReceiptGroupForRequestItem(
+      group,
+      requestItem,
+      purchaseOrderItem,
+      suppliers,
+    )
+    const nextPurchaseOrderItem =
+      nextGroup.purchaseOrderItemsByRequestItemId[requestItem.id] ??
+      purchaseOrderItem
+
     onChange({
-      ...group,
+      ...nextGroup,
       items: [
-        ...group.items,
+        ...nextGroup.items,
         createItemFromRequest(
           requestItem,
-          purchaseOrderItem,
+          nextPurchaseOrderItem,
         ),
       ],
     })
@@ -1480,7 +1535,11 @@ const ReceiptVouchersCreation = () => {
     const mixedPurchaseOrderGroup = activeGroups.find((group) =>
       group.items.some((item) => {
         const requestItem = requestItems.find(
-          (currentItem) => currentItem.id === item.purchase_request_item_id,
+          (currentItem) =>
+            getRequestItemSelectionKey(
+              currentItem,
+              group.purchaseOrderItemsByRequestItemId[currentItem.id],
+            ) === getReceiptItemKey(item),
         )
 
         return requestItem ? !isRequestItemInReceiptGroup(requestItem, group) : false
