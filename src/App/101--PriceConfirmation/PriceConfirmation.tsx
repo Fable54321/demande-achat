@@ -130,18 +130,44 @@ const getItemNumberValue = (value: unknown) => {
   return Number.isFinite(numberValue) ? numberValue : null
 }
 
+const getMoneyStringValue = (value: unknown) => {
+  const numberValue = getItemNumberValue(value)
+
+  if (numberValue === null) {
+    return null
+  }
+
+  return (Math.round((numberValue + Number.EPSILON) * 100) / 100).toFixed(2)
+}
+
+const getMoneyNumberValue = (value: unknown) => {
+  const moneyValue = getMoneyStringValue(value)
+
+  return moneyValue === null ? null : Number(moneyValue)
+}
+
 const getConfirmedUnitPriceForItem = (item: (typeof purchaseItems)[number]) => {
   const typedValue = confirmedUnitPrices[item.id]?.trim()
 
   if (typedValue) {
-    const typedNumber = Number(typedValue)
-
-    return Number.isFinite(typedNumber) ? typedNumber : null
+    return getMoneyNumberValue(typedValue)
   }
 
   return (
-    getItemNumberValue(item.buyer_confirmed_unit_price) ??
-    getItemNumberValue(item.requested_unit_price)
+    getMoneyNumberValue(item.buyer_confirmed_unit_price) ??
+    getMoneyNumberValue(item.requested_unit_price)
+  )
+}
+
+const getConfirmedUnitPricePayloadForItem = (
+  item: (typeof purchaseItems)[number],
+) => {
+  const typedValue = confirmedUnitPrices[item.id]?.trim()
+
+  return (
+    (typedValue ? getMoneyStringValue(typedValue) : null) ??
+    getMoneyStringValue(item.buyer_confirmed_unit_price) ??
+    getMoneyStringValue(item.requested_unit_price)
   )
 }
 
@@ -170,14 +196,14 @@ const getRequestedTotalForItem = (item: (typeof purchaseItems)[number]) => {
 
   return requestedUnitPrice === null
     ? null
-    : requestedUnitPrice * getItemQuantityValue(item)
+    : Math.round((requestedUnitPrice * getItemQuantityValue(item) + Number.EPSILON) * 100) / 100
 }
 
 const getConfirmedTotalForItem = (item: (typeof purchaseItems)[number]) => {
   const confirmedUnitPrice = getConfirmedUnitPriceForItem(item)
 
   if (confirmedUnitPrice !== null) {
-    return confirmedUnitPrice * getItemQuantityValue(item)
+    return Math.round((confirmedUnitPrice * getItemQuantityValue(item) + Number.EPSILON) * 100) / 100
   }
 
   return (
@@ -282,7 +308,7 @@ const payload = {
   items: purchaseItems.map((item) => ({
     id: item.id,
     buyer_confirmed_unit_price:
-      getConfirmedUnitPriceForItem(item) ?? item.requested_unit_price,
+      getConfirmedUnitPricePayloadForItem(item),
     buyer_confirmed_supplier: getConfirmedSupplierForItem(item),
   })),
 }

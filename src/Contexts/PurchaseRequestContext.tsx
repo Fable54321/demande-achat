@@ -121,7 +121,7 @@ export interface CreatePurchaseRequestPayload {
 
 export interface BuyerValidationItemPayload {
   id: number
-  buyer_confirmed_unit_price?: number | null
+  buyer_confirmed_unit_price?: number | string | null
   buyer_confirmed_supplier?: string | null
 }
 
