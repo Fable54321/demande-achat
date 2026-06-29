@@ -6,6 +6,7 @@ import {
   ImagePlus,
   Link2,
   PackageCheck,
+  PencilLine,
   Send,
   ShoppingBag,
   SquareStack,
@@ -546,13 +547,26 @@ const successMessage = "Votre demande d'achat a bien été envoyée"
           />
        
       }
-      <button
-  type="button"
-  onClick={() => setIsEditableRequestsOpen(true)}
-  className="mt-4 inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
->
-  Je veux annuler ou modifier une demande
-</button>
+      <div className="mx-auto mb-4 flex w-full max-w-4xl flex-col gap-3 rounded-2xl border border-secondary/15 bg-white/80 px-4 py-4 shadow-sm tablet:flex-row tablet:items-center tablet:justify-between tablet:px-5">
+        <div>
+          <p className="text-sm font-bold text-slate-900">
+            Vous avez déjà envoyé une demande?
+          </p>
+          <p className="mt-1 text-sm leading-5 text-slate-600">
+            Consultez vos demandes encore modifiables ou annulez celles qui ne
+            sont plus nécessaires.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setIsEditableRequestsOpen(true)}
+          className="inline-flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-secondary/25 bg-white px-4 py-2.5 text-sm font-bold text-secondary shadow-sm transition hover:border-secondary/40 hover:bg-tertiary focus:outline-none focus:ring-4 focus:ring-primary/25 tablet:w-auto tablet:shrink-0"
+        >
+          <PencilLine size={18} aria-hidden="true" />
+          Modifier ou annuler
+        </button>
+      </div>
       <form
         onSubmit={handleSubmit}
         className="mx-auto flex w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-secondary/15 bg-white shadow-2xl shadow-secondary/10"
