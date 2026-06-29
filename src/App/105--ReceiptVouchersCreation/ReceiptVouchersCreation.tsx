@@ -72,6 +72,29 @@ type RequestItemWithReceiptDetails = {
   shipping_address_snapshot?: string | null
 }
 
+type ReceiptVoucherDefaultItem = Omit<
+  Partial<RequestItemWithReceiptDetails>,
+  "id"
+> & {
+  purchase_request_item_id: number | string
+  purchase_order_item_id: number | string
+  purchase_order_id: number | string
+  purchase_order_reference?: string | null
+  received_quantity?: number | string | null
+}
+
+type ReceiptVoucherDefaultSupplier = {
+  purchase_order_id: number | string
+  purchase_order_reference?: string | null
+  supplier_id?: number | string | null
+  supplier?: string | null
+  supplier_name?: string | null
+  supplier_address_snapshot?: string | null
+  supplier_phone?: string | null
+  delivery_method?: string | null
+  supplier_reference?: string | null
+}
+
 type PurchaseOrderItemSnapshot = {
   id?: number | string | null
   purchase_order_id?: number | string | null
@@ -110,12 +133,17 @@ type PurchaseOrderSnapshot = {
   purchased_by_name?: string | null
   purchased_by_surname?: string | null
   purchase_order_items?: PurchaseOrderItemSnapshot[] | null
+  items?: PurchaseOrderItemSnapshot[] | null
 }
 
 type ReceiptVoucherRequestWithPurchaseOrder = {
   purchase_order?: PurchaseOrderSnapshot | null
   purchase_orders?: PurchaseOrderSnapshot[] | null
   purchase_order_items?: PurchaseOrderItemSnapshot[] | null
+  receipt_voucher_defaults?: {
+    suppliers?: ReceiptVoucherDefaultSupplier[] | null
+    items?: ReceiptVoucherDefaultItem[] | null
+  } | null
   items?: RequestItemWithReceiptDetails[]
   purchased_by_name?: string | null
   purchased_by_surname?: string | null
@@ -128,7 +156,7 @@ type ReceiptVoucherDocumentProps = {
   groupsCount: number
   suppliers: Supplier[]
   requestItems: RequestItemWithReceiptDetails[]
-  selectedItemIdsInOtherGroups: Set<number>
+  selectedItemIdsInOtherGroups: Set<string>
   canRemove: boolean
   requestReference: string | number
   onChange: (group: ReceiptVoucherGroupForm) => void
@@ -241,6 +269,90 @@ const getPurchaseOrderItemOrderId = (
   purchaseOrderItem?: PurchaseOrderItemSnapshot | null,
 ) => toIdKey(purchaseOrderItem?.purchase_order_id ?? purchaseOrderItem?.purchase_order?.id)
 
+const createRequestItemFromReceiptDefault = (
+  item: ReceiptVoucherDefaultItem,
+): RequestItemWithReceiptDetails => {
+  const purchaseRequestItemId = toOptionalNumber(item.purchase_request_item_id) ?? 0
+  const orderedQuantity = item.ordered_quantity ?? item.quantity ?? 0
+
+  return {
+    id: purchaseRequestItemId,
+    purchase_order_id: item.purchase_order_id,
+    purchase_order_item_id:
+      toOptionalNumber(item.purchase_order_item_id) ?? null,
+    item_code: item.item_code ?? item.code ?? null,
+    code: item.code ?? item.item_code ?? null,
+    description: item.item_description ?? item.description ?? "",
+    item_description: item.item_description ?? item.description ?? null,
+    quantity: Number(orderedQuantity) || 0,
+    ordered_quantity: orderedQuantity,
+    quantity_format: item.ordered_unit ?? item.quantity_format ?? null,
+    ordered_unit: item.ordered_unit ?? item.quantity_format ?? null,
+    remaining_quantity: item.remaining_quantity ?? item.received_quantity ?? null,
+    already_received_quantity: item.already_received_quantity ?? null,
+    supplier_id: item.supplier_id,
+    supplier_name: item.supplier_name,
+    supplier: item.supplier,
+    supplier_address_snapshot: item.supplier_address_snapshot,
+    supplier_phone: item.supplier_phone,
+    delivery_method: item.delivery_method,
+    shipping_address_snapshot: item.shipping_address_snapshot,
+    purchase_order_item: {
+      id: item.purchase_order_item_id,
+      purchase_order_id: item.purchase_order_id,
+      purchase_request_item_id: item.purchase_request_item_id,
+      item_code: item.item_code ?? item.code ?? null,
+      item_description: item.item_description ?? item.description ?? null,
+      ordered_quantity: orderedQuantity,
+      ordered_unit: item.ordered_unit ?? item.quantity_format ?? null,
+      remaining_quantity: item.remaining_quantity ?? item.received_quantity ?? null,
+      already_received_quantity: item.already_received_quantity ?? null,
+      supplier_id: item.supplier_id,
+      supplier_name: item.supplier_name,
+      supplier: item.supplier,
+      supplier_address_snapshot: item.supplier_address_snapshot,
+      supplier_phone: item.supplier_phone,
+      delivery_method: item.delivery_method,
+      shipping_address_snapshot: item.shipping_address_snapshot,
+    },
+  }
+}
+
+const getReceiptVoucherRequestItems = (
+  request: ReceiptVoucherRequestWithPurchaseOrder,
+) => {
+  const defaultItems = request.receipt_voucher_defaults?.items ?? []
+
+  return defaultItems.length > 0
+    ? defaultItems.map(createRequestItemFromReceiptDefault)
+    : request.items ?? []
+}
+
+const getRequestItemPurchaseOrderId = (item: RequestItemWithReceiptDetails) =>
+  getPurchaseOrderId(getItemPurchaseOrder(item)) ??
+  getPurchaseOrderItemOrderId(item.purchase_order_item) ??
+  toIdKey(item.purchase_order_id)
+
+const isRequestItemInReceiptGroup = (
+  item: RequestItemWithReceiptDetails,
+  group: ReceiptVoucherGroupForm,
+) => {
+  if (group.purchaseOrderItemsByRequestItemId[item.id]) {
+    return true
+  }
+
+  const groupPurchaseOrderId = group.purchase_order_id
+    ? String(group.purchase_order_id)
+    : null
+  const itemPurchaseOrderId = getRequestItemPurchaseOrderId(item)
+
+  if (groupPurchaseOrderId) {
+    return itemPurchaseOrderId === groupPurchaseOrderId
+  }
+
+  return !itemPurchaseOrderId
+}
+
 const createPurchaseOrderFromItem = (
   item: RequestItemWithReceiptDetails,
 ): PurchaseOrderSnapshot | null => {
@@ -295,6 +407,23 @@ const createPurchaseOrderFromPurchaseOrderItem = (
   }
 }
 
+const createPurchaseOrderFromReceiptDefaultSupplier = (
+  supplier: ReceiptVoucherDefaultSupplier,
+): PurchaseOrderSnapshot | null => {
+  const purchaseOrderId = toIdKey(supplier.purchase_order_id)
+  if (!purchaseOrderId) return null
+
+  return {
+    id: purchaseOrderId,
+    supplier_id: supplier.supplier_id,
+    supplier_name: supplier.supplier_name,
+    supplier: supplier.supplier,
+    supplier_address_snapshot: supplier.supplier_address_snapshot,
+    supplier_phone: supplier.supplier_phone,
+    delivery_method: supplier.delivery_method,
+  }
+}
+
 const mergePurchaseOrderDefaults = (
   current: PurchaseOrderSnapshot,
   incoming: PurchaseOrderSnapshot,
@@ -344,6 +473,10 @@ const getKnownPurchaseOrders = (
   }
 
   explicitPurchaseOrders.forEach(addPurchaseOrder)
+
+  request.receipt_voucher_defaults?.suppliers?.forEach((supplier) => {
+    addPurchaseOrder(createPurchaseOrderFromReceiptDefaultSupplier(supplier))
+  })
 
   request.purchase_order_items?.forEach((purchaseOrderItem) => {
     addPurchaseOrder(createPurchaseOrderFromPurchaseOrderItem(purchaseOrderItem))
@@ -397,6 +530,24 @@ const createItemFromRequest = (
     received_quantity: String(receivedQuantity),
     comment: "",
   }
+}
+
+const getReceiptItemKey = (item: ReceiptVoucherItemForm) =>
+  item.purchase_order_item_id
+    ? `purchase-order-item:${item.purchase_order_item_id}`
+    : `purchase-request-item:${item.purchase_request_item_id}`
+
+const getRequestItemSelectionKey = (
+  item: RequestItemWithReceiptDetails,
+  purchaseOrderItem?: PurchaseOrderItemSnapshot | null,
+) => {
+  const purchaseOrderItemId = toOptionalNumber(
+    item.purchase_order_item_id ?? purchaseOrderItem?.id,
+  )
+
+  return purchaseOrderItemId
+    ? `purchase-order-item:${purchaseOrderItemId}`
+    : `purchase-request-item:${item.id}`
 }
 
 const createGroupFromPurchaseOrder = ({
@@ -537,6 +688,7 @@ const createGroupsFromRequest = (
 
     const purchaseOrderId = getPurchaseOrderId(purchaseOrder)
     const allPurchaseOrderItems = [
+      ...(purchaseOrder.items ?? []),
       ...(purchaseOrder.purchase_order_items ?? []),
       ...(request.purchase_order_items ?? []).filter(
         (purchaseOrderItem) =>
@@ -585,10 +737,14 @@ const createGroupsFromRequest = (
 
   const groupedItemIds = new Set(
     groups.flatMap((group) =>
-      group.items.map((item) => item.purchase_request_item_id),
+      group.items.map(getReceiptItemKey),
     ),
   )
-  const ungroupedItems = requestItems.filter((item) => !groupedItemIds.has(item.id))
+  const ungroupedItems = requestItems.filter((item) => {
+    const itemKey = getRequestItemSelectionKey(item, item.purchase_order_item)
+
+    return !groupedItemIds.has(itemKey)
+  })
 
   if (ungroupedItems.length > 0) {
     groups[0] = {
@@ -616,7 +772,7 @@ const ReceiptVoucherDocument = ({
   onRemove,
 }: ReceiptVoucherDocumentProps) => {
   const selectedItemIds = useMemo(
-    () => new Set(group.items.map((item) => item.purchase_request_item_id)),
+    () => new Set(group.items.map(getReceiptItemKey)),
     [group.items],
   )
 
@@ -686,11 +842,17 @@ const ReceiptVoucherDocument = ({
   }
 
   const toggleItem = (requestItem: RequestItemWithReceiptDetails) => {
-    if (selectedItemIds.has(requestItem.id)) {
+    const purchaseOrderItem = group.purchaseOrderItemsByRequestItemId[requestItem.id]
+    const requestItemKey = getRequestItemSelectionKey(
+      requestItem,
+      purchaseOrderItem,
+    )
+
+    if (selectedItemIds.has(requestItemKey)) {
       onChange({
         ...group,
         items: group.items.filter(
-          (item) => item.purchase_request_item_id !== requestItem.id,
+          (item) => getReceiptItemKey(item) !== requestItemKey,
         ),
       })
       return
@@ -702,20 +864,20 @@ const ReceiptVoucherDocument = ({
         ...group.items,
         createItemFromRequest(
           requestItem,
-          group.purchaseOrderItemsByRequestItemId[requestItem.id],
+          purchaseOrderItem,
         ),
       ],
     })
   }
 
   const updateItem = (
-    purchaseRequestItemId: number,
+    itemKey: string,
     update: Partial<ReceiptVoucherItemForm>,
   ) => {
     onChange({
       ...group,
       items: group.items.map((item) =>
-        item.purchase_request_item_id === purchaseRequestItemId
+        getReceiptItemKey(item) === itemKey
           ? { ...item, ...update }
           : item,
       ),
@@ -1005,18 +1167,24 @@ const ReceiptVoucherDocument = ({
 
         <div className="mt-3 grid gap-2">
           {requestItems.map((requestItem) => {
-            const selectedInOtherGroup = selectedItemIdsInOtherGroups.has(
-              requestItem.id,
+            const purchaseOrderItem =
+              group.purchaseOrderItemsByRequestItemId[requestItem.id]
+            const requestItemKey = getRequestItemSelectionKey(
+              requestItem,
+              purchaseOrderItem,
             )
-            const selected = selectedItemIds.has(requestItem.id)
+            const selectedInOtherGroup = selectedItemIdsInOtherGroups.has(
+              requestItemKey,
+            )
+            const selected = selectedItemIds.has(requestItemKey)
             const requestItemPreview = createItemFromRequest(
               requestItem,
-              group.purchaseOrderItemsByRequestItemId[requestItem.id],
+              purchaseOrderItem,
             )
 
             return (
               <label
-                key={requestItem.id}
+                key={requestItemKey}
                 className={`flex items-start gap-3 rounded-lg border p-3 ${
                   selectedInOtherGroup
                     ? "cursor-not-allowed border-slate-200 bg-slate-50 opacity-60"
@@ -1076,13 +1244,16 @@ const ReceiptVoucherDocument = ({
           </thead>
 
           <tbody>
-            {group.items.map((item) => (
-              <tr key={item.purchase_request_item_id} className="align-top">
+            {group.items.map((item) => {
+              const itemKey = getReceiptItemKey(item)
+
+              return (
+              <tr key={itemKey} className="align-top">
                 <td className="border border-[#d2dfd2] p-2">
                   <input
                     value={item.code}
                     onChange={(event) =>
-                      updateItem(item.purchase_request_item_id, {
+                      updateItem(itemKey, {
                         code: event.target.value,
                       })
                     }
@@ -1094,7 +1265,7 @@ const ReceiptVoucherDocument = ({
                   <textarea
                     value={item.description}
                     onChange={(event) =>
-                      updateItem(item.purchase_request_item_id, {
+                      updateItem(itemKey, {
                         description: event.target.value,
                       })
                     }
@@ -1110,7 +1281,7 @@ const ReceiptVoucherDocument = ({
                       step="0.01"
                       value={item.quantity}
                       onChange={(event) =>
-                        updateItem(item.purchase_request_item_id, {
+                        updateItem(itemKey, {
                           quantity: event.target.value,
                         })
                       }
@@ -1129,7 +1300,7 @@ const ReceiptVoucherDocument = ({
                     step="0.01"
                     value={item.received_quantity}
                     onChange={(event) =>
-                      updateItem(item.purchase_request_item_id, {
+                      updateItem(itemKey, {
                         received_quantity: event.target.value,
                       })
                     }
@@ -1141,7 +1312,7 @@ const ReceiptVoucherDocument = ({
                   <textarea
                     value={item.comment}
                     onChange={(event) =>
-                      updateItem(item.purchase_request_item_id, {
+                      updateItem(itemKey, {
                         comment: event.target.value,
                       })
                     }
@@ -1149,7 +1320,8 @@ const ReceiptVoucherDocument = ({
                   />
                 </td>
               </tr>
-            ))}
+              )
+            })}
 
             {group.items.length === 0 && (
               <tr>
@@ -1219,10 +1391,14 @@ const ReceiptVouchersCreation = () => {
       if (cancelled || !request) return
 
       const receiptRequest = request as ReceiptVoucherRequestWithPurchaseOrder
-      const items = receiptRequest.items ?? []
+      const items = getReceiptVoucherRequestItems(receiptRequest)
+      const normalizedReceiptRequest = {
+        ...receiptRequest,
+        items,
+      }
 
       setRequestItems(items)
-      setGroups(createGroupsFromRequest(receiptRequest, loadedSuppliers))
+      setGroups(createGroupsFromRequest(normalizedReceiptRequest, loadedSuppliers))
     })
 
     return () => {
@@ -1239,7 +1415,7 @@ const ReceiptVouchersCreation = () => {
     () =>
       new Set(
         groups.flatMap((group) =>
-          group.items.map((item) => item.purchase_request_item_id),
+          group.items.map(getReceiptItemKey),
         ),
       ),
     [groups],
@@ -1298,6 +1474,23 @@ const ReceiptVouchersCreation = () => {
 
     if (invalidGroup) {
       setSubmitError("Chaque article doit avoir une quantité valide.")
+      return
+    }
+
+    const mixedPurchaseOrderGroup = activeGroups.find((group) =>
+      group.items.some((item) => {
+        const requestItem = requestItems.find(
+          (currentItem) => currentItem.id === item.purchase_request_item_id,
+        )
+
+        return requestItem ? !isRequestItemInReceiptGroup(requestItem, group) : false
+      }),
+    )
+
+    if (mixedPurchaseOrderGroup) {
+      setSubmitError(
+        "Les articles de bons de commande differents doivent rester dans des bons de reception separes.",
+      )
       return
     }
 
@@ -1387,11 +1580,14 @@ const ReceiptVouchersCreation = () => {
         )}
 
         {groups.map((group, index) => {
+          const requestItemsForGroup = requestItems.filter((requestItem) =>
+            isRequestItemInReceiptGroup(requestItem, group),
+          )
           const selectedItemIdsInOtherGroups = new Set(
             groups
               .filter((currentGroup) => currentGroup.localId !== group.localId)
               .flatMap((currentGroup) =>
-                currentGroup.items.map((item) => item.purchase_request_item_id),
+                currentGroup.items.map(getReceiptItemKey),
               ),
           )
 
@@ -1402,7 +1598,7 @@ const ReceiptVouchersCreation = () => {
               groupIndex={index}
               groupsCount={groups.length}
               suppliers={suppliers}
-              requestItems={requestItems}
+              requestItems={requestItemsForGroup}
               selectedItemIdsInOtherGroups={selectedItemIdsInOtherGroups}
               canRemove={groups.length > 1}
               requestReference={
