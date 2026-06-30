@@ -212,6 +212,18 @@ const toOptionalNumber = (value: number | string | null | undefined) => {
   return Number.isFinite(number) ? number : null
 }
 
+const getQuantityNumber = (value: number | string | null | undefined) => {
+  if (typeof value === "string") {
+    const normalizedValue = value.trim().replace(",", ".")
+    if (!normalizedValue) return null
+
+    const number = Number(normalizedValue)
+    return Number.isFinite(number) ? number : null
+  }
+
+  return toOptionalNumber(value)
+}
+
 const toIdKey = (value: number | string | null | undefined) => {
   const number = toOptionalNumber(value)
 
@@ -261,6 +273,42 @@ const getPurchaseOrderItemRequestItemId = (
 const getPurchaseOrderItemOrderId = (
   purchaseOrderItem?: PurchaseOrderItemSnapshot | null,
 ) => toIdKey(purchaseOrderItem?.purchase_order_id ?? purchaseOrderItem?.purchase_order?.id)
+
+const getReceivableQuantity = (
+  item: RequestItemWithReceiptDetails,
+  purchaseOrderItem?: PurchaseOrderItemSnapshot | null,
+) => {
+  const remainingQuantity = getQuantityNumber(
+    purchaseOrderItem?.remaining_quantity ?? item.remaining_quantity,
+  )
+
+  if (remainingQuantity !== null) return remainingQuantity
+
+  const orderedQuantity = getQuantityNumber(
+    purchaseOrderItem?.ordered_quantity ??
+      item.ordered_quantity ??
+      item.quantity,
+  )
+  const alreadyReceivedQuantity = getQuantityNumber(
+    purchaseOrderItem?.already_received_quantity ??
+      item.already_received_quantity,
+  )
+
+  if (orderedQuantity !== null && alreadyReceivedQuantity !== null) {
+    return orderedQuantity - alreadyReceivedQuantity
+  }
+
+  return null
+}
+
+const hasReceivableQuantity = (
+  item: RequestItemWithReceiptDetails,
+  purchaseOrderItem?: PurchaseOrderItemSnapshot | null,
+) => {
+  const receivableQuantity = getReceivableQuantity(item, purchaseOrderItem)
+
+  return receivableQuantity === null || receivableQuantity > 0
+}
 
 const createRequestItemFromReceiptDefault = (
   item: ReceiptVoucherDefaultItem,
@@ -507,8 +555,7 @@ const createItemFromRequest = (
   const quantity =
     purchaseOrderItem?.ordered_quantity ?? item.ordered_quantity ?? item.quantity ?? ""
   const receivedQuantity =
-    purchaseOrderItem?.remaining_quantity ??
-    item.remaining_quantity ??
+    getReceivableQuantity(item, purchaseOrderItem) ??
     quantity
 
   return {
@@ -704,18 +751,22 @@ const createGroupsFromRequest = (
   request: ReceiptVoucherRequestWithPurchaseOrder,
   suppliers: Supplier[],
 ) => {
-  const requestItems = request.items ?? []
+  const requestItems = (request.items ?? []).filter((item) =>
+    hasReceivableQuantity(item, item.purchase_order_item),
+  )
   const purchaseOrders = getKnownPurchaseOrders(request)
 
   if (purchaseOrders.length === 0) {
-    return [
-      createGroupFromPurchaseOrder({
-        purchaseOrder: null,
-        request,
-        suppliers,
-        items: requestItems,
-      }),
-    ]
+    return requestItems.length > 0
+      ? [
+          createGroupFromPurchaseOrder({
+            purchaseOrder: null,
+            request,
+            suppliers,
+            items: requestItems,
+          }),
+        ]
+      : []
   }
 
   const groups = purchaseOrders.map((purchaseOrder) => {
@@ -732,7 +783,17 @@ const createGroupsFromRequest = (
         (purchaseOrderItem) =>
           getPurchaseOrderItemOrderId(purchaseOrderItem) === purchaseOrderId,
       ),
-    ]
+    ].filter((purchaseOrderItem) => {
+      const purchaseRequestItemId =
+        getPurchaseOrderItemRequestItemId(purchaseOrderItem)
+      const requestItem = purchaseRequestItemId
+        ? requestItems.find((item) => item.id === purchaseRequestItemId)
+        : null
+
+      if (!requestItem) return false
+
+      return hasReceivableQuantity(requestItem, purchaseOrderItem)
+    })
 
     allPurchaseOrderItems.forEach((purchaseOrderItem) => {
       const purchaseRequestItemId =
@@ -753,8 +814,10 @@ const createGroupsFromRequest = (
         getPurchaseOrderItemOrderId(item.purchase_order_item) ??
         toIdKey(item.purchase_order_id)
 
-      if (purchaseOrderItemsByRequestItemId.has(item.id)) {
-        return true
+      const purchaseOrderItem = purchaseOrderItemsByRequestItemId.get(item.id)
+
+      if (purchaseOrderItem) {
+        return hasReceivableQuantity(item, purchaseOrderItem)
       }
 
       if (!itemPurchaseOrderId) {
@@ -771,7 +834,7 @@ const createGroupsFromRequest = (
       items: itemsForPurchaseOrder,
       purchaseOrderItemsByRequestItemId,
     })
-  })
+  }).filter((group) => group.items.length > 0)
 
   const groupedItemIds = new Set(
     groups.flatMap((group) =>
@@ -794,7 +857,7 @@ const createGroupsFromRequest = (
     }
   }
 
-  return groups.length > 0 ? groups : [createEmptyGroup()]
+  return groups
 }
 
 const ReceiptVoucherDocument = ({
@@ -1440,12 +1503,15 @@ const ReceiptVouchersCreation = () => {
 
       const receiptRequest = request as ReceiptVoucherRequestWithPurchaseOrder
       const items = getReceiptVoucherRequestItems(receiptRequest)
+      const receivableItems = items.filter((item) =>
+        hasReceivableQuantity(item, item.purchase_order_item),
+      )
       const normalizedReceiptRequest = {
         ...receiptRequest,
-        items,
+        items: receivableItems,
       }
 
-      setRequestItems(items)
+      setRequestItems(receivableItems)
       setGroups(createGroupsFromRequest(normalizedReceiptRequest, loadedSuppliers))
     })
 
@@ -1631,6 +1697,12 @@ const ReceiptVouchersCreation = () => {
           </section>
         )}
 
+        {requestItems.length === 0 && (
+          <section className="rounded-2xl bg-white p-6 text-center text-sm font-semibold text-slate-600 shadow-sm">
+            Tous les articles commandes ont deja ete recus.
+          </section>
+        )}
+
         {groups.map((group, index) => {
           const requestItemsForGroup = requestItems.filter((requestItem) =>
             isRequestItemInReceiptGroup(requestItem, group),
@@ -1664,13 +1736,15 @@ const ReceiptVouchersCreation = () => {
           )
         })}
 
-        <button
+        {requestItems.length > 0 && (
+          <button
           type="button"
           onClick={addGroup}
           className="rounded-xl border border-dashed border-[#4B7312] bg-white px-4 py-3 text-sm font-semibold text-[#4B7312] hover:bg-[#4B7312] hover:text-white"
         >
           + Ajouter un autre bon de réception
-        </button>
+          </button>
+        )}
 
         <section className="sticky bottom-4 rounded-xl border border-slate-200 bg-white p-4 shadow-lg">
           {(submitError || receiptVoucherError) && (
