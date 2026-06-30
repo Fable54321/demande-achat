@@ -219,19 +219,12 @@ const toIdKey = (value: number | string | null | undefined) => {
 }
 
 const getSupplierAddressFields = (supplier: Supplier) => {
-  const parsedAddress = parseSupplierAddressSnapshot(
-    supplier.address_snapshot,
-    supplier.name,
-  )
-
   return {
-    pickupStreet: parsedAddress.street || supplier.address_snapshot || "",
-    pickupCity: parsedAddress.city || supplier.city || "",
-    pickupPostalCode: parsedAddress.postalCode || supplier.postal_code || "",
-    pickupProvince:
-      parsedAddress.province || supplier.province || DEFAULT_SUPPLIER_PROVINCE,
-    pickupCountry:
-      parsedAddress.country || supplier.country || DEFAULT_SUPPLIER_COUNTRY,
+    pickupStreet: supplier.address_snapshot || "",
+    pickupCity: supplier.city || "",
+    pickupPostalCode: supplier.postal_code || "",
+    pickupProvince: supplier.province || DEFAULT_SUPPLIER_PROVINCE,
+    pickupCountry: supplier.country || DEFAULT_SUPPLIER_COUNTRY,
   }
 }
 
@@ -581,20 +574,20 @@ const createGroupFromPurchaseOrder = ({
     ? getSupplierAddressFields(purchaseOrderSupplier)
     : null
   const pickupStreet =
-    parsedPurchaseOrderAddress.street || supplierAddressFields?.pickupStreet || ""
+    supplierAddressFields?.pickupStreet || parsedPurchaseOrderAddress.street || ""
   const pickupCity =
-    parsedPurchaseOrderAddress.city || supplierAddressFields?.pickupCity || ""
+    supplierAddressFields?.pickupCity || parsedPurchaseOrderAddress.city || ""
   const pickupPostalCode =
-    parsedPurchaseOrderAddress.postalCode ||
     supplierAddressFields?.pickupPostalCode ||
+    parsedPurchaseOrderAddress.postalCode ||
     ""
   const pickupProvince =
-    parsedPurchaseOrderAddress.province ||
     supplierAddressFields?.pickupProvince ||
+    parsedPurchaseOrderAddress.province ||
     DEFAULT_SUPPLIER_PROVINCE
   const pickupCountry =
-    parsedPurchaseOrderAddress.country ||
     supplierAddressFields?.pickupCountry ||
+    parsedPurchaseOrderAddress.country ||
     DEFAULT_SUPPLIER_COUNTRY
 
   return {

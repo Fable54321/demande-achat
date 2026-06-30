@@ -15,7 +15,6 @@ import {
   createItemFormFromRequestItem,
   DEFAULT_SUPPLIER_COUNTRY,
   DEFAULT_SUPPLIER_PROVINCE,
-  parseSupplierAddressSnapshot,
   toRoundedMoney,
 } from "./Utils/buyingHelpers"
 import { buildCreatePurchaseOrderPayload } from "./Utils/buyingPayload"
@@ -94,19 +93,12 @@ const purchaseOrderTableFieldClass =
 const deliveryMethodOptions = ["Ramassé", "Livré"] as const
 
 const getSupplierAddressFields = (supplier: Supplier) => {
-  const parsedAddress = parseSupplierAddressSnapshot(
-    supplier.address_snapshot,
-    supplier.name,
-  )
-
   return {
-    supplier_address_street: parsedAddress.street || supplier.address_snapshot || "",
-    supplier_city: parsedAddress.city || supplier.city || "",
-    supplier_postal_code: parsedAddress.postalCode || supplier.postal_code || "",
-    supplier_province:
-      parsedAddress.province || supplier.province || DEFAULT_SUPPLIER_PROVINCE,
-    supplier_country:
-      parsedAddress.country || supplier.country || DEFAULT_SUPPLIER_COUNTRY,
+    supplier_address_street: supplier.address_snapshot || "",
+    supplier_city: supplier.city || "",
+    supplier_postal_code: supplier.postal_code || "",
+    supplier_province: supplier.province || DEFAULT_SUPPLIER_PROVINCE,
+    supplier_country: supplier.country || DEFAULT_SUPPLIER_COUNTRY,
   }
 }
 

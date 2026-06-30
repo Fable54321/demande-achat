@@ -224,7 +224,7 @@ export const BuyingProvider = ({ children }: { children: ReactNode }) => {
       setLoading(true)
       setError(null)
 
-      const data = await request<Supplier[]>("/buying/suppliers")
+      const data = await request<Supplier[]>("/suppliers/suppliers")
 
       setSuppliers(data)
       return data
