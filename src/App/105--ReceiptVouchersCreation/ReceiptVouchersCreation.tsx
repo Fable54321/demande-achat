@@ -25,6 +25,7 @@ type ReceiptVoucherItemForm = {
 type ReceiptVoucherGroupForm = {
   localId: string
   purchase_order_id: number | null
+  purchase_order_reference: string | null
   purchaseOrderItemsByRequestItemId: Record<number, PurchaseOrderItemSnapshot>
   pickupSupplierId: string
   pickupName: string
@@ -120,6 +121,7 @@ type PurchaseOrderItemSnapshot = {
 
 type PurchaseOrderSnapshot = {
   id?: number | string | null
+  purchase_order_reference?: string | null
   supplier_id?: number | string | null
   supplier_name?: string | null
   supplier?: string | null
@@ -413,6 +415,7 @@ const createPurchaseOrderFromItem = (
 
   return {
     id: purchaseOrderId,
+    purchase_order_reference: purchaseOrderItem?.purchase_order_reference,
     supplier_id: item.supplier_id ?? purchaseOrderItem?.supplier_id,
     supplier_name: item.supplier_name ?? purchaseOrderItem?.supplier_name,
     supplier: item.supplier ?? purchaseOrderItem?.supplier,
@@ -439,6 +442,7 @@ const createPurchaseOrderFromPurchaseOrderItem = (
 
   return {
     id: purchaseOrderId,
+    purchase_order_reference: purchaseOrderItem.purchase_order_reference,
     supplier_id: purchaseOrderItem.supplier_id,
     supplier_name: purchaseOrderItem.supplier_name,
     supplier: purchaseOrderItem.supplier,
@@ -460,6 +464,7 @@ const createPurchaseOrderFromReceiptDefaultSupplier = (
 
   return {
     id: purchaseOrderId,
+    purchase_order_reference: supplier.purchase_order_reference,
     supplier_id: supplier.supplier_id,
     supplier_name: supplier.supplier_name,
     supplier: supplier.supplier,
@@ -476,6 +481,8 @@ const mergePurchaseOrderDefaults = (
   ...incoming,
   ...current,
   id: current.id ?? incoming.id,
+  purchase_order_reference:
+    current.purchase_order_reference ?? incoming.purchase_order_reference,
   supplier_id: current.supplier_id ?? incoming.supplier_id,
   supplier_name: current.supplier_name ?? incoming.supplier_name,
   supplier: current.supplier ?? incoming.supplier,
@@ -640,6 +647,7 @@ const createGroupFromPurchaseOrder = ({
   return {
     localId: crypto.randomUUID(),
     purchase_order_id: toOptionalNumber(purchaseOrder?.id),
+    purchase_order_reference: purchaseOrder?.purchase_order_reference ?? null,
     purchaseOrderItemsByRequestItemId: Object.fromEntries(
       purchaseOrderItemsByRequestItemId,
     ),
@@ -686,6 +694,7 @@ const createGroupFromPurchaseOrder = ({
 const createEmptyGroup = (): ReceiptVoucherGroupForm => ({
   localId: crypto.randomUUID(),
   purchase_order_id: null,
+  purchase_order_reference: null,
   purchaseOrderItemsByRequestItemId: {},
   pickupSupplierId: "",
   pickupName: "",
@@ -876,6 +885,9 @@ const ReceiptVoucherDocument = ({
     () => new Set(group.items.map(getReceiptItemKey)),
     [group.items],
   )
+  const displayedOrderReference =
+    group.purchase_order_reference ??
+    `${requestReference}${groupsCount > 1 ? `-${groupIndex + 1}` : ""}`
 
   const updatePickupAddress = (
     update: Partial<
@@ -1022,8 +1034,7 @@ const ReceiptVoucherDocument = ({
             # Commande
           </p>
           <p className="text-lg font-bold text-slate-700 wrap-anywhere">
-            {requestReference}
-            {groupsCount > 1 ? `-${groupIndex + 1}` : ""}
+            {displayedOrderReference}
           </p>
         </div>
       </header>
