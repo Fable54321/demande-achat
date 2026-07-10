@@ -62,6 +62,9 @@ const getTodayDateInputValue = () => {
 const getPurchaseOrderPdfUrl = (result: CreatePurchaseOrderResponse) =>
   result.purchase_order_pdf?.url ?? result.purchase_order_pdf_urls?.[0] ?? null
 
+const getPurchasableRequestItems = (items: PurchaseRequestItem[]) =>
+  items.filter((item) => !item.has_purchase_order)
+
 const toNumber = (value: string) => {
   const number = Number(value.trim().replace(",", "."))
 
@@ -784,7 +787,9 @@ const BuyingProcess = () => {
           ...createEmptyGroup(),
           shipping_address_snapshot: VEGIBEC_ADDRESS,
           ordered_at: getTodayDateInputValue(),
-          items: (request.items ?? []).map(createItemFormFromRequestItem),
+          items: getPurchasableRequestItems(request.items ?? []).map(
+            createItemFormFromRequestItem,
+          ),
         },
       ])
     })
@@ -804,7 +809,10 @@ const BuyingProcess = () => {
     }
   }, [])
 
-  const requestItems = useMemo(() => buyingRequest?.items ?? [], [buyingRequest])
+  const requestItems = useMemo(
+    () => getPurchasableRequestItems(buyingRequest?.items ?? []),
+    [buyingRequest],
+  )
 
   const activeGroups = useMemo(
     () => groups.filter((group) => group.items.length > 0),

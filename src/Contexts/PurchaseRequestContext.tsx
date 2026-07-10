@@ -18,6 +18,8 @@ export type PurchaseRequestStatus =
   | "ready_to_purchase"
   | "partially_purchased"
   | "purchased"
+  | "partially_received"
+  | "received"
   | "cancelled"
 
 interface PurchaseRequestFormTokenResponse {
@@ -49,6 +51,7 @@ export interface PurchaseRequestItem {
 
   created_at: string
   updated_at: string
+  has_purchase_order?: boolean
 }
 
 export interface PurchaseRequest {
