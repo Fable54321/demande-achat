@@ -7,6 +7,7 @@ import { MAX_QUANTITY_FORMAT_LENGTH } from "../../100-Form/Utils/formConstants"
 
 export const DEFAULT_BUYER_NAME = "Ricardo Molière"
 export const DEFAULT_BUYER_EMAIL = "achats@vegibec.com"
+export const DEFAULT_BUYER_PHONE = "263-355-6318"
 
 export const DEFAULT_SUPPLIER_PROVINCE = "Québec"
 export const DEFAULT_SUPPLIER_COUNTRY = "Canada"
@@ -113,6 +114,7 @@ export const createEmptyGroup = (): PurchaseOrderGroupForm => ({
 
   buyer_name: DEFAULT_BUYER_NAME,
   buyer_email: DEFAULT_BUYER_EMAIL,
+  buyer_phone: DEFAULT_BUYER_PHONE,
 
   requested_delivery_date: "",
   delivery_method: "Livré",

@@ -27,6 +27,7 @@ export type PurchaseOrderGroupForm = {
 
   buyer_name: string
   buyer_email: string
+  buyer_phone: string
 
   requested_delivery_date: string
   delivery_method: string

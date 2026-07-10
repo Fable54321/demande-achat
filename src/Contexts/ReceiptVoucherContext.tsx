@@ -26,6 +26,7 @@ export type CreateReceiptVoucherPayload = {
   supplier_phone?: string | null
   received_by_name: string
   received_by_email: string
+  buyer_phone?: string | null
   received_at?: string | null
   delivery_method?: string | null
   receipt_note?: string | null
@@ -44,6 +45,7 @@ export type ReceiptVoucher = {
   supplier_phone?: string | null
   received_by_name?: string | null
   received_by_email?: string | null
+  buyer_phone?: string | null
   received_at: string
   delivery_method?: string | null
   receipt_note: string | null

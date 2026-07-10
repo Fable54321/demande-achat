@@ -50,6 +50,7 @@ export interface PurchaseOrder {
 
   buyer_name: string | null
   buyer_email: string | null
+  buyer_phone: string | null
 
   requested_delivery_date: string | null
   received_at: string | null
@@ -104,6 +105,7 @@ export interface CreatePurchaseOrderPayload {
 
   buyer_name?: string | null
   buyer_email?: string | null
+  buyer_phone?: string | null
 
   requested_delivery_date?: string | null
   delivery_method?: string | null

@@ -29,6 +29,7 @@ export const buildCreatePurchaseOrderPayload = (
 
   buyer_name: toNullableText(group.buyer_name),
   buyer_email: toNullableText(group.buyer_email),
+  buyer_phone: toNullableText(group.buyer_phone),
 
   requested_delivery_date: group.requested_delivery_date || null,
   delivery_method: toNullableText(group.delivery_method),

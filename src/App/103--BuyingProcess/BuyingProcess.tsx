@@ -385,6 +385,7 @@ const PurchaseOrderDocument = ({
                   className={`mt-2 w-full ${purchaseOrderFieldClass}`}
                 />
               </label>
+
             </div>
 
             <label className="block">
@@ -457,6 +458,20 @@ const PurchaseOrderDocument = ({
                   value={group.buyer_email}
                   onChange={(event) =>
                     onChange({ ...group, buyer_email: event.target.value })
+                  }
+                  className={`mt-2 w-full ${purchaseOrderFieldClass}`}
+                />
+              </label>
+
+              <label className="block">
+                <span className="text-sm font-black uppercase text-[#1f6b24]">
+                  Téléphone
+                </span>
+                <input
+                  type="tel"
+                  value={group.buyer_phone}
+                  onChange={(event) =>
+                    onChange({ ...group, buyer_phone: event.target.value })
                   }
                   className={`mt-2 w-full ${purchaseOrderFieldClass}`}
                 />

@@ -8,6 +8,7 @@ import {
   buildSupplierAddressSnapshot,
   DEFAULT_SUPPLIER_COUNTRY,
   DEFAULT_SUPPLIER_PROVINCE,
+  DEFAULT_BUYER_PHONE,
   parseSupplierAddressSnapshot,
 } from "../103--BuyingProcess/Utils/buyingHelpers"
 
@@ -39,6 +40,7 @@ type ReceiptVoucherGroupForm = {
   shippedTo: string
   buyerName: string
   buyerEmail: string
+  buyerPhone: string
   orderedAt: string
   receivedAt: string
   deliveryMethod: string
@@ -674,6 +676,7 @@ const createGroupFromPurchaseOrder = ({
     shippedTo: purchaseOrder?.shipping_address_snapshot || VEGIBEC_ADDRESS,
     buyerName: DEFAULT_RECEIVED_BY_NAME,
     buyerEmail: DEFAULT_RECEIVED_BY_EMAIL,
+    buyerPhone: DEFAULT_BUYER_PHONE,
     orderedAt:
       purchaseOrder?.ordered_at?.slice(0, 10) ??
       purchaseOrder?.purchased_at?.slice(0, 10) ??
@@ -708,6 +711,7 @@ const createEmptyGroup = (): ReceiptVoucherGroupForm => ({
   shippedTo: VEGIBEC_ADDRESS,
   buyerName: DEFAULT_RECEIVED_BY_NAME,
   buyerEmail: DEFAULT_RECEIVED_BY_EMAIL,
+  buyerPhone: DEFAULT_BUYER_PHONE,
   orderedAt: "",
   receivedAt: getTodayDateInputValue(),
   deliveryMethod: "",
@@ -752,6 +756,7 @@ const createReceiptGroupForRequestItem = (
     receivedAt: group.receivedAt,
     buyerName: group.buyerName,
     buyerEmail: group.buyerEmail,
+    buyerPhone: group.buyerPhone,
     receiptNote: group.receiptNote,
   }
 }
@@ -1059,7 +1064,7 @@ const ReceiptVoucherDocument = ({
 
       <div className="mt-5 grid gap-5 md:grid-cols-3">
         <section className="rounded-xl border border-[#d2dfd2] p-4">
-          <h2 className="text-lg font-black text-[#1f6b24]">Ramassé chez</h2>
+          <h2 className="text-lg font-black text-[#1f6b24]">Expédié par</h2>
           <select
             value={group.pickupSupplierId}
             onChange={(event) => selectPickupSupplier(event.target.value)}
@@ -1137,6 +1142,7 @@ const ReceiptVoucherDocument = ({
                   className={`mt-2 w-full ${receiptVoucherFieldClass}`}
                 />
               </label>
+
             </div>
 
             <label className="block">
@@ -1169,7 +1175,7 @@ const ReceiptVoucherDocument = ({
         </section>
 
         <section className="rounded-xl border border-[#d2dfd2] p-4">
-          <h2 className="text-lg font-black text-[#1f6b24]">Expédié à</h2>
+          <h2 className="text-lg font-black text-[#1f6b24]">Reçu par</h2>
           <textarea
             value={group.shippedTo}
             onChange={(event) =>
@@ -1204,6 +1210,20 @@ const ReceiptVoucherDocument = ({
                   value={group.buyerEmail}
                   onChange={(event) =>
                     onChange({ ...group, buyerEmail: event.target.value })
+                  }
+                  className={`mt-2 w-full ${receiptVoucherFieldClass}`}
+                />
+              </label>
+
+              <label className="block">
+                <span className="text-sm font-black uppercase text-[#1f6b24]">
+                  Téléphone
+                </span>
+                <input
+                  type="tel"
+                  value={group.buyerPhone}
+                  onChange={(event) =>
+                    onChange({ ...group, buyerPhone: event.target.value })
                   }
                   className={`mt-2 w-full ${receiptVoucherFieldClass}`}
                 />
@@ -1355,7 +1375,7 @@ const ReceiptVoucherDocument = ({
               <th className="border border-[#d2dfd2] px-3 py-3">
                 Description
               </th>
-              <th className="border border-[#d2dfd2] px-3 py-3">Qte</th>
+              <th className="border border-[#d2dfd2] px-3 py-3">Qté Cdée</th>
               <th className="border border-[#d2dfd2] px-3 py-3">
                 Qte reçue
               </th>
@@ -1634,6 +1654,7 @@ const ReceiptVouchersCreation = () => {
         supplier_phone: toNullableText(group.pickupPhone),
         received_by_name: group.buyerName.trim() || DEFAULT_RECEIVED_BY_NAME,
         received_by_email: group.buyerEmail.trim() || DEFAULT_RECEIVED_BY_EMAIL,
+        buyer_phone: toNullableText(group.buyerPhone),
         received_at: group.receivedAt || null,
         delivery_method: toNullableText(group.deliveryMethod),
         receipt_note: toNullableText(group.receiptNote),
