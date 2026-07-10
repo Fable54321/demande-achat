@@ -172,7 +172,6 @@ const VEGIBEC_ADDRESS = [
   "171 Rang Ste-Sophie",
   "OKA",
   "J0N 1E0 Québec, Canada",
-  "4505960566",
 ].join("\n")
 
 const DEFAULT_RECEIVED_BY_NAME = "Ricardo Molière"
@@ -1028,7 +1027,6 @@ const ReceiptVoucherDocument = ({
           <p>171 Rang Ste-Sophie</p>
           <p>OKA, Québec, Canada, J0N 1E0</p>
           <p>Téléphone (450) 596-0566</p>
-          <p>entrepot@vegibec.com</p>
         </div>
 
         <div className="text-left md:text-right">

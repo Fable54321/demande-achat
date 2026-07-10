@@ -30,7 +30,6 @@ const VEGIBEC_ADDRESS = [
   "171 Rang Ste-Sophie",
   "OKA",
   "J0N 1E0 Québec, Canada",
-  "4505960566",
 ].join("\n")
 
 type CreatedPurchaseOrderJournalEntry = {
@@ -264,11 +263,10 @@ const PurchaseOrderDocument = ({
           <p>171 Rang Ste-Sophie</p>
           <p>OKA, Québec, Canada, J0N 1E0</p>
           <p>Téléphone (450) 596-0566</p>
-          <p>entrepot@vegibec.com</p>
         </div>
 
         <div className="text-left md:text-right">
-          <h1 className="text-3xl font-black text-slate-950">Bon d'achat</h1>
+          <h1 className="text-3xl font-black text-slate-950">Bon de commande</h1>
           <p className="mt-2 text-sm font-black uppercase text-slate-500">
             # Commande
           </p>
