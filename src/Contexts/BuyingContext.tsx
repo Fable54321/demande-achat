@@ -124,9 +124,20 @@ export interface CreatePurchaseOrderResponse {
   purchase_order: PurchaseOrder
   purchase_order_items: PurchaseOrderItem[]
   purchase_order_pdf_urls?: string[]
+  purchase_order_pdf_preview_urls?: string[]
+  purchase_order_pdf_download_urls?: string[]
+  purchase_order_pdfs?: Array<{
+    key: string
+    language: "fr" | "en"
+    preview_url: string
+    download_url: string
+  }>
   purchase_order_pdf?: {
     key: string
-    url: string
+    language?: "fr" | "en"
+    url?: string
+    preview_url?: string
+    download_url?: string
   }
 }
 

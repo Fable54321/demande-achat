@@ -36,7 +36,7 @@ type CreatedPurchaseOrderJournalEntry = {
   id: number
   reference: string
   supplierName: string | null
-  pdfUrl: string | null
+  pdfs: Array<{ language: "fr" | "en"; url: string }>
 }
 
 type PurchaseOrderDocumentProps = {
@@ -59,8 +59,19 @@ const getTodayDateInputValue = () => {
   return new Date(today.getTime() - timezoneOffset).toISOString().slice(0, 10)
 }
 
-const getPurchaseOrderPdfUrl = (result: CreatePurchaseOrderResponse) =>
-  result.purchase_order_pdf?.url ?? result.purchase_order_pdf_urls?.[0] ?? null
+const getPurchaseOrderPdfs = (result: CreatePurchaseOrderResponse) => {
+  if (result.purchase_order_pdfs?.length) {
+    return result.purchase_order_pdfs.map((pdf) => ({
+      language: pdf.language,
+      url: pdf.preview_url || pdf.download_url,
+    }))
+  }
+
+  return (result.purchase_order_pdf_urls ?? []).map((url, index) => ({
+    language: (index === 1 ? "en" : "fr") as "fr" | "en",
+    url,
+  }))
+}
 
 const getPurchasableRequestItems = (items: PurchaseRequestItem[]) =>
   items.filter((item) => !item.has_purchase_order)
@@ -994,7 +1005,7 @@ const BuyingProcess = () => {
         id: result.purchase_order.id,
         reference: result.purchase_order.purchase_order_reference,
         supplierName: result.purchase_order.supplier_name,
-        pdfUrl: getPurchaseOrderPdfUrl(result),
+        pdfs: getPurchaseOrderPdfs(result),
       })
     }
 
@@ -1072,15 +1083,20 @@ const BuyingProcess = () => {
                       )}
                     </div>
 
-                    {purchaseOrder.pdfUrl ? (
-                      <a
-                        href={purchaseOrder.pdfUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="rounded-lg bg-[#4B7312] px-4 py-2 text-sm font-bold text-white hover:bg-[#3d5f0f]"
-                      >
-                        Ouvrir le PDF
-                      </a>
+                    {purchaseOrder.pdfs.length ? (
+                      <div className="flex flex-wrap gap-2">
+                        {purchaseOrder.pdfs.map((pdf) => (
+                          <a
+                            key={pdf.language}
+                            href={pdf.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="rounded-lg bg-[#4B7312] px-4 py-2 text-sm font-bold text-white hover:bg-[#3d5f0f]"
+                          >
+                            {pdf.language === "en" ? "Open English PDF" : "Ouvrir le PDF français"}
+                          </a>
+                        ))}
+                      </div>
                     ) : (
                       <span className="text-sm font-semibold text-slate-500">
                         PDF non disponible
