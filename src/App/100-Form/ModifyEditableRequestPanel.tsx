@@ -94,15 +94,20 @@ const ModifyEditableRequestPanel = ({
   const requestReference =
     editableRequestDetail?.request.request_reference ?? String(requestId)
 
-  const canSubmit = useMemo(() => {
-    if (modificationReason.trim().length < 3) return false
-    if (items.length === 0) return false
+  const parseNumber = (value: string) => Number(value.trim().replace(",", "."))
 
-    return items.every((item) => {
-      const quantity = Number(item.quantity)
-      const unitPrice = Number(item.requested_unit_price)
+  const validationError = useMemo(() => {
+    if (modificationReason.trim().length < 3) {
+      return "Veuillez indiquer une raison de modification d’au moins 3 caractères."
+    }
 
-      return (
+    if (items.length === 0) return "La demande doit contenir au moins un article."
+
+    const invalidItemIndex = items.findIndex((item) => {
+      const quantity = parseNumber(item.quantity)
+      const unitPrice = parseNumber(item.requested_unit_price || "0")
+
+      return !(
         item.description.trim().length > 0 &&
         Number.isFinite(quantity) &&
         quantity > 0 &&
@@ -110,7 +115,15 @@ const ModifyEditableRequestPanel = ({
         unitPrice >= 0
       )
     })
+
+    if (invalidItemIndex >= 0) {
+      return `Vérifiez la description, la quantité et le prix de l’article ${invalidItemIndex + 1}.`
+    }
+
+    return null
   }, [items, modificationReason])
+
+  const canSubmit = validationError === null
 
   const updateItem = (
     itemId: number,
@@ -125,7 +138,7 @@ const ModifyEditableRequestPanel = ({
   }
 
   const handleSubmit = async () => {
-    if (!canSubmit || isModifyingEditableRequest) return
+    if (validationError || isModifyingEditableRequest) return
 
     await modifyEditablePurchaseRequest(requestId, {
       requester_email: requesterEmail,
@@ -136,9 +149,9 @@ const ModifyEditableRequestPanel = ({
         id: item.id,
         description: item.description.trim(),
         reason: item.reason.trim() || null,
-        quantity: Number(item.quantity),
+        quantity: parseNumber(item.quantity),
         quantity_format: item.quantity_format.trim() || null,
-        requested_unit_price: Number(item.requested_unit_price),
+        requested_unit_price: parseNumber(item.requested_unit_price || "0"),
         requested_supplier: item.requested_supplier.trim() || null,
         product_link: item.product_link.trim() || null,
       })),
@@ -372,7 +385,7 @@ const ModifyEditableRequestPanel = ({
         <button
           type="button"
           onClick={handleSubmit}
-          disabled={!canSubmit || isModifyingEditableRequest}
+          disabled={isModifyingEditableRequest}
           className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-secondary px-4 py-2 text-sm font-semibold text-white hover:bg-primary disabled:cursor-not-allowed disabled:opacity-60"
         >
           {isModifyingEditableRequest ? (
@@ -388,6 +401,12 @@ const ModifyEditableRequestPanel = ({
           )}
         </button>
       </div>
+
+      {!canSubmit && !isModifyingEditableRequest && (
+        <p className="mt-3 text-right text-sm font-medium text-amber-700">
+          {validationError}
+        </p>
+      )}
     </div>
   )
 }
