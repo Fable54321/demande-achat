@@ -90,6 +90,13 @@ useEffect(() => {
 
   getPurchaseRequestByToken(Number(id), token, "approbation-achat")
 },[getPurchaseRequestByToken, id, token]);
+
+useEffect(() => {
+  if (selectedPurchaseRequest?.status !== "admin_on_wait") return
+
+  setAdminDecision("on_wait")
+  setWaitReason(selectedPurchaseRequest.admin_note ?? "")
+}, [selectedPurchaseRequest?.admin_note, selectedPurchaseRequest?.status])
   
 
 const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -128,15 +135,19 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     window.scrollTo({ top: 0, behavior: "smooth" })
     setSubmitSuccess(true)
 
-    setTimeout(() => {
-      setSubmitSuccess(false)
-      window.location.replace("https://vegibec-portail.com/")
-    }, 4000)
+    if (adminDecision !== "on_wait") {
+      setTimeout(() => {
+        setSubmitSuccess(false)
+        window.location.replace("https://vegibec-portail.com/")
+      }, 4000)
+    }
   }
 }
 
 const name = "Michelle";
-const successMessage = "la décision a bien été envoyée";
+const successMessage = adminDecision === "on_wait"
+  ? "la demande a été mise en attente; ce lien restera accessible"
+  : "la décision a bien été envoyée";
 
   return (
     <section className="w-full px-4 pb-10 pt-6 tablet:px-8 ">
@@ -197,6 +208,16 @@ const successMessage = "la décision a bien été envoyée";
           )}
 
           {selectedPurchaseRequest && (
+  <>
+  {selectedPurchaseRequest.status === "admin_on_wait" && (
+    <div className="flex items-start gap-3 rounded-lg border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-900">
+      <AlertCircle className="mt-0.5 shrink-0" size={18} />
+      <span>
+        Cette demande est en attente. Ce lien reste actif et vous pouvez modifier
+        la décision ci-dessous.
+      </span>
+    </div>
+  )}
   <div className="rounded-xl border border-secondary/15 bg-tertiary/70 p-4 tablet:p-5">
     <div className="flex items-start gap-3">
       <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-secondary text-white shadow-sm shadow-secondary/20">
@@ -331,6 +352,7 @@ const successMessage = "la décision a bien été envoyée";
       ))}
     </div>
   </div>
+  </>
 )}
           
          
