@@ -88,15 +88,21 @@ const confirmedTotal = useMemo(() => {
 useEffect(() => {
   if (!id || !token) return
 
-  getPurchaseRequestByToken(Number(id), token, "approbation-achat")
+  let cancelled = false
+
+  getPurchaseRequestByToken(Number(id), token, "approbation-achat").then(
+    (purchaseRequest) => {
+      if (cancelled || purchaseRequest?.status !== "admin_on_wait") return
+
+      setAdminDecision("on_wait")
+      setWaitReason(purchaseRequest.admin_note ?? "")
+    },
+  )
+
+  return () => {
+    cancelled = true
+  }
 },[getPurchaseRequestByToken, id, token]);
-
-useEffect(() => {
-  if (selectedPurchaseRequest?.status !== "admin_on_wait") return
-
-  setAdminDecision("on_wait")
-  setWaitReason(selectedPurchaseRequest.admin_note ?? "")
-}, [selectedPurchaseRequest?.admin_note, selectedPurchaseRequest?.status])
   
 
 const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -281,14 +287,14 @@ const successMessage = adminDecision === "on_wait"
               Article {item.item_index}
             </p>
 
-            <p className="whitespace-pre-wrap text-slate-900 [overflow-wrap:anywhere]">
+            <p className="whitespace-pre-wrap text-slate-900 wrap-anywhere">
               <span className="font-bold">Produit:</span>
               <br />
               {item.description || "Non indiqué"}
             </p>
 
             {item.reason && (
-              <p className="whitespace-pre-wrap text-slate-900 [overflow-wrap:anywhere]">
+              <p className="whitespace-pre-wrap text-slate-900 wrap-anywhere">
                 <span className="font-bold">Justification:</span>
                 <br />
                 {item.reason}
