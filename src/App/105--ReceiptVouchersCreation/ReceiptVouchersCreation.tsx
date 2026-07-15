@@ -569,7 +569,7 @@ const createItemFromRequest = (
   return {
     purchase_request_item_id: item.id,
     purchase_order_item_id:
-      toOptionalNumber(item.purchase_order_item_id ?? purchaseOrderItem?.id),
+      toOptionalNumber(purchaseOrderItem?.id ?? item.purchase_order_item_id),
     code: purchaseOrderItem?.item_code ?? item.item_code ?? item.code ?? "",
     description:
       purchaseOrderItem?.item_description ??
@@ -820,25 +820,30 @@ const createGroupsFromRequest = (
       }
     })
 
-    const itemsForPurchaseOrder = requestItems.filter((item) => {
-      const itemPurchaseOrder = getItemPurchaseOrder(item)
-      const itemPurchaseOrderId =
-        getPurchaseOrderId(itemPurchaseOrder) ??
-        getPurchaseOrderItemOrderId(item.purchase_order_item) ??
-        toIdKey(item.purchase_order_id)
+    const itemsForPurchaseOrder = requestItems
+      .filter((item) => {
+        const itemPurchaseOrder = getItemPurchaseOrder(item)
+        const itemPurchaseOrderId =
+          getPurchaseOrderId(itemPurchaseOrder) ??
+          getPurchaseOrderItemOrderId(item.purchase_order_item) ??
+          toIdKey(item.purchase_order_id)
 
-      const purchaseOrderItem = purchaseOrderItemsByRequestItemId.get(item.id)
+        const purchaseOrderItem = purchaseOrderItemsByRequestItemId.get(item.id)
 
-      if (purchaseOrderItem) {
-        return hasReceivableQuantity(item, purchaseOrderItem)
-      }
+        if (purchaseOrderItem) {
+          return hasReceivableQuantity(item, purchaseOrderItem)
+        }
 
-      if (!itemPurchaseOrderId) {
-        return purchaseOrders.length === 1
-      }
+        if (!itemPurchaseOrderId) {
+          return purchaseOrders.length === 1
+        }
 
-      return itemPurchaseOrderId === purchaseOrderId
-    })
+        return itemPurchaseOrderId === purchaseOrderId
+      })
+      .filter(
+        (item, index, items) =>
+          items.findIndex((candidate) => candidate.id === item.id) === index,
+      )
 
     return createGroupFromPurchaseOrder({
       purchaseOrder,
