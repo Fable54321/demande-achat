@@ -18,6 +18,7 @@ type ReceiptVoucherItemForm = {
   code: string
   description: string
   quantity: string
+  remaining_quantity: string
   quantity_format: string
   received_quantity: string
   comment: string
@@ -587,6 +588,7 @@ const createItemFromRequest = (
       item.description ??
       "",
     quantity: String(quantity),
+    remaining_quantity: String(receivedQuantity),
     quantity_format:
       purchaseOrderItem?.ordered_unit ?? item.ordered_unit ?? item.quantity_format ?? "",
     received_quantity: String(receivedQuantity),
@@ -1446,19 +1448,23 @@ const ReceiptVoucherDocument = ({
                 </td>
 
                 <td className="border border-[#d2dfd2] p-2">
-                  <input
-                    type="number"
-                    min="0"
-                    max={item.quantity}
-                    step="0.01"
+                    <input
+                      type="number"
+                      min="0"
+                      max={item.remaining_quantity}
+                      step="0.01"
                     value={item.received_quantity}
                     onChange={(event) =>
                       updateItem(itemKey, {
                         received_quantity: event.target.value,
                       })
                     }
-                    className={`w-full ${receiptVoucherTableFieldClass}`}
-                  />
+                      className={`w-full ${receiptVoucherTableFieldClass}`}
+                    />
+                    <p className="mt-1 text-xs font-semibold text-slate-500">
+                      Quantité restante : {item.remaining_quantity}{" "}
+                      {item.quantity_format}
+                    </p>
                 </td>
 
                 <td className="border border-[#d2dfd2] p-2">
@@ -1617,21 +1623,24 @@ const ReceiptVouchersCreation = () => {
     const invalidGroup = activeGroups.find((group) =>
       group.items.some((item) => {
         const quantity = toRoundedNumber(item.quantity)
+        const remainingQuantity = toRoundedNumber(item.remaining_quantity)
         const receivedQuantity = toRoundedNumber(item.received_quantity)
 
         return (
           quantity === null ||
           quantity <= 0 ||
+          remainingQuantity === null ||
+          remainingQuantity <= 0 ||
           receivedQuantity === null ||
           receivedQuantity <= 0 ||
-          receivedQuantity > quantity
+          receivedQuantity > remainingQuantity
         )
       }),
     )
 
     if (invalidGroup) {
       setSubmitError(
-        "La quantité reçue doit être supérieure à 0 et ne peut pas dépasser la quantité commandée.",
+        "La quantité reçue doit être supérieure à 0 et ne peut pas dépasser la quantité restante.",
       )
       return
     }
