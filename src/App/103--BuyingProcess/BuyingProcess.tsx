@@ -45,7 +45,6 @@ type PurchaseOrderDocumentProps = {
   groupsCount: number
   suppliers: Supplier[]
   requestItems: PurchaseRequestItem[]
-  selectedItemIdsInOtherGroups: Set<number>
   canRemove: boolean
   requestReference: string | number
   onChange: (group: PurchaseOrderGroupForm) => void
@@ -74,7 +73,7 @@ const getPurchaseOrderPdfs = (result: CreatePurchaseOrderResponse) => {
 }
 
 const getPurchasableRequestItems = (items: PurchaseRequestItem[]) =>
-  items.filter((item) => !item.has_purchase_order)
+  items.filter((item) => Number(item.remaining_quantity ?? item.quantity) > 0)
 
 const toNumber = (value: string) => {
   const number = Number(value.trim().replace(",", "."))
@@ -141,7 +140,6 @@ const PurchaseOrderDocument = ({
   groupsCount,
   suppliers,
   requestItems,
-  selectedItemIdsInOtherGroups,
   canRemove,
   requestReference,
   onChange,
@@ -568,24 +566,16 @@ const PurchaseOrderDocument = ({
 
         <div className="mt-3 grid gap-2">
           {requestItems.map((requestItem) => {
-            const selectedInOtherGroup = selectedItemIdsInOtherGroups.has(
-              requestItem.id,
-            )
             const selected = selectedItemIds.has(requestItem.id)
 
             return (
               <label
                 key={requestItem.id}
-                className={`flex items-start gap-3 rounded-lg border p-3 ${
-                  selectedInOtherGroup
-                    ? "cursor-not-allowed border-slate-200 bg-slate-50 opacity-60"
-                    : "cursor-pointer border-slate-200 hover:border-[#4B7312]"
-                }`}
+                className="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 p-3 hover:border-[#4B7312]"
               >
                 <input
                   type="checkbox"
                   checked={selected}
-                  disabled={selectedInOtherGroup}
                   onChange={() => toggleItem(requestItem)}
                   className="mt-1"
                 />
@@ -594,14 +584,9 @@ const PurchaseOrderDocument = ({
                     {requestItem.description}
                   </p>
                   <p className="text-sm text-slate-600">
-                    Quantité demandée: {requestItem.quantity}{" "}
+                    Quantité restante: {requestItem.remaining_quantity ?? requestItem.quantity}{" "}
                     {requestItem.quantity_format ?? ""}
                   </p>
-                  {selectedInOtherGroup && (
-                    <p className="mt-1 text-xs font-semibold text-orange-700">
-                      Déjà inclus dans un autre bon d'achat
-                    </p>
-                  )}
                 </div>
               </label>
             )
@@ -976,6 +961,29 @@ const BuyingProcess = () => {
       return
     }
 
+    const orderedQuantitiesByItemId = activeGroups
+      .flatMap((group) => group.items)
+      .reduce((quantities, item) => {
+        quantities.set(
+          item.purchase_request_item_id,
+          (quantities.get(item.purchase_request_item_id) ?? 0) +
+            toNumber(item.ordered_quantity),
+        )
+        return quantities
+      }, new Map<number, number>())
+    const overAllocatedItem = requestItems.find(
+      (item) =>
+        (orderedQuantitiesByItemId.get(item.id) ?? 0) >
+        Number(item.remaining_quantity ?? item.quantity),
+    )
+
+    if (overAllocatedItem) {
+      setSubmitError(
+        `La quantité totale de « ${overAllocatedItem.description} » dépasse la quantité restante.`,
+      )
+      return
+    }
+
     if (purchaseOrderWarnings.length > 0) {
       setSubmitError(
         "Veuillez vérifier ou masquer les avertissements avant de créer le bon d'achat.",
@@ -1110,14 +1118,6 @@ const BuyingProcess = () => {
         )}
 
         {groups.map((group, index) => {
-          const selectedItemIdsInOtherGroups = new Set(
-            groups
-              .filter((currentGroup) => currentGroup.localId !== group.localId)
-              .flatMap((currentGroup) =>
-                currentGroup.items.map((item) => item.purchase_request_item_id),
-              ),
-          )
-
           return (
             <PurchaseOrderDocument
               key={group.localId}
@@ -1126,7 +1126,6 @@ const BuyingProcess = () => {
               groupsCount={groups.length}
               suppliers={suppliers}
               requestItems={requestItems}
-              selectedItemIdsInOtherGroups={selectedItemIdsInOtherGroups}
               canRemove={groups.length > 1}
               requestReference={buyingRequest.request_reference ?? buyingRequest.id}
               onChange={(updatedGroup) =>

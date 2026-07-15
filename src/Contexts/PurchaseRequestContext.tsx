@@ -52,6 +52,9 @@ export interface PurchaseRequestItem {
   created_at: string
   updated_at: string
   has_purchase_order?: boolean
+  ordered_quantity?: number
+  remaining_quantity?: number
+  is_fully_purchased?: boolean
 }
 
 export interface PurchaseRequest {

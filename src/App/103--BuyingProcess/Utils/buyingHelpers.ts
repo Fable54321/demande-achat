@@ -129,7 +129,7 @@ export const createItemFormFromRequestItem = (
   item: PurchaseRequestItem,
 ): PurchaseOrderItemForm => ({
   purchase_request_item_id: item.id,
-  ordered_quantity: String(item.quantity ?? ""),
+  ordered_quantity: String(item.remaining_quantity ?? item.quantity ?? ""),
   final_unit_price: "",
   item_code: "",
   item_description: item.description ?? "",
