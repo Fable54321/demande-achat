@@ -1435,12 +1435,9 @@ const ReceiptVoucherDocument = ({
                       min="0"
                       step="0.01"
                       value={item.quantity}
-                      onChange={(event) =>
-                        updateItem(itemKey, {
-                          quantity: event.target.value,
-                        })
-                      }
-                      className={`min-w-0 flex-1 ${receiptVoucherTableFieldClass}`}
+                      readOnly
+                      aria-readonly="true"
+                      className={`min-w-0 flex-1 bg-slate-100 text-slate-600 ${receiptVoucherTableFieldClass}`}
                     />
                     <span className="py-2 text-xs font-semibold text-slate-500">
                       {item.quantity_format}
@@ -1452,6 +1449,7 @@ const ReceiptVoucherDocument = ({
                   <input
                     type="number"
                     min="0"
+                    max={item.quantity}
                     step="0.01"
                     value={item.received_quantity}
                     onChange={(event) =>
@@ -1625,13 +1623,16 @@ const ReceiptVouchersCreation = () => {
           quantity === null ||
           quantity <= 0 ||
           receivedQuantity === null ||
-          receivedQuantity <= 0
+          receivedQuantity <= 0 ||
+          receivedQuantity > quantity
         )
       }),
     )
 
     if (invalidGroup) {
-      setSubmitError("Chaque article doit avoir une quantité valide.")
+      setSubmitError(
+        "La quantité reçue doit être supérieure à 0 et ne peut pas dépasser la quantité commandée.",
+      )
       return
     }
 
