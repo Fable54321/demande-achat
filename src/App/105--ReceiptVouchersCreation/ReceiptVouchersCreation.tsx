@@ -385,8 +385,18 @@ const isRequestItemInReceiptGroup = (
     return true
   }
 
-  if (group.purchaseOrderItemsByRequestItemId[item.id]) {
-    return true
+  const groupPurchaseOrderItem =
+    group.purchaseOrderItemsByRequestItemId[item.id]
+
+  if (groupPurchaseOrderItem) {
+    const groupPurchaseOrderItemId = toIdKey(groupPurchaseOrderItem.id)
+    const itemPurchaseOrderItemId = toIdKey(
+      item.purchase_order_item_id ?? item.purchase_order_item?.id,
+    )
+
+    return itemPurchaseOrderItemId
+      ? itemPurchaseOrderItemId === groupPurchaseOrderItemId
+      : true
   }
 
   const groupPurchaseOrderId = group.purchase_order_id
