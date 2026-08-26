@@ -291,7 +291,7 @@ const ModifyEditableRequestPanel = ({
                 type="button"
                 onClick={() => removeItem(item.clientId)}
                 disabled={items.length === 1}
-                className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+                className="cursor-pointer inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
                 aria-label={`Supprimer l'article ${index + 1}`}
               >
                 <Trash2 size={16} />

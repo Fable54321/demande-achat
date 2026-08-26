@@ -127,7 +127,7 @@ const EditableRequestsOverlay = ({
           <button
             type="button"
             onClick={handleClose}
-            className="rounded-full p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+            className="rounded-full p-2 cursor-pointer text-slate-500 hover:bg-slate-100 hover:text-slate-800"
             aria-label="Fermer"
           >
             <X size={20} />
