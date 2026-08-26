@@ -31,7 +31,7 @@ export type EditablePurchaseRequest = {
 }
 
 export type EditablePurchaseRequestItemPayload = {
-  id: number
+  id?: number
   description: string | null
   reason: string | null
   quantity: number

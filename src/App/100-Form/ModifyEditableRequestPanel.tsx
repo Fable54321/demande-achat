@@ -1,5 +1,5 @@
-import { AlertCircle, ArrowLeft, Loader2, Save } from "lucide-react"
-import { useEffect, useMemo, useState } from "react"
+import { AlertCircle, ArrowLeft, Loader2, Plus, Save, Trash2 } from "lucide-react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useEditablePurchaseRequests } from "../../Contexts/EditablePurchaseRequestContext"
 
 type ModifyEditableRequestPanelProps = {
@@ -10,7 +10,8 @@ type ModifyEditableRequestPanelProps = {
 }
 
 type EditableItemFormState = {
-  id: number
+  id?: number
+  clientId: string
   description: string
   reason: string
   quantity: string
@@ -40,6 +41,18 @@ const ModifyEditableRequestPanel = ({
   const [neededByDate, setNeededByDate] = useState("")
   const [modificationReason, setModificationReason] = useState("")
   const [items, setItems] = useState<EditableItemFormState[]>([])
+  const newItemElementRef = useRef<HTMLDivElement | null>(null)
+  const shouldScrollToNewItemRef = useRef(false)
+
+  useEffect(() => {
+    if (!shouldScrollToNewItemRef.current || !newItemElementRef.current) return
+
+    shouldScrollToNewItemRef.current = false
+    newItemElementRef.current.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    })
+  }, [items])
 
   useEffect(() => {
     let isMounted = true
@@ -64,6 +77,7 @@ const ModifyEditableRequestPanel = ({
         setItems(
           detail.items.map((item) => ({
             id: item.id,
+            clientId: `existing-${item.id}`,
             description: item.description ?? "",
             reason: item.reason ?? "",
             quantity: String(item.quantity ?? ""),
@@ -126,14 +140,37 @@ const ModifyEditableRequestPanel = ({
   const canSubmit = validationError === null
 
   const updateItem = (
-    itemId: number,
-    field: keyof Omit<EditableItemFormState, "id">,
+    clientId: string,
+    field: Exclude<keyof EditableItemFormState, "id" | "clientId">,
     value: string,
   ) => {
     setItems((currentItems) =>
       currentItems.map((item) =>
-        item.id === itemId ? { ...item, [field]: value } : item,
+        item.clientId === clientId ? { ...item, [field]: value } : item,
       ),
+    )
+  }
+
+  const addItem = () => {
+    shouldScrollToNewItemRef.current = true
+    setItems((currentItems) => [
+      ...currentItems,
+      {
+        clientId: crypto.randomUUID(),
+        description: "",
+        reason: "",
+        quantity: "1",
+        quantity_format: "",
+        requested_unit_price: "",
+        requested_supplier: "",
+        product_link: "",
+      },
+    ])
+  }
+
+  const removeItem = (clientId: string) => {
+    setItems((currentItems) =>
+      currentItems.filter((item) => item.clientId !== clientId),
     )
   }
 
@@ -146,7 +183,7 @@ const ModifyEditableRequestPanel = ({
       needed_by_date: neededByDate || null,
       modification_reason: modificationReason.trim(),
       items: items.map((item) => ({
-        id: item.id,
+        ...(item.id === undefined ? {} : { id: item.id }),
         description: item.description.trim(),
         reason: item.reason.trim() || null,
         quantity: parseNumber(item.quantity),
@@ -228,16 +265,39 @@ const ModifyEditableRequestPanel = ({
       </div>
 
       <div className="mt-7 space-y-4">
-        <h3 className="text-sm font-semibold text-slate-900">Articles</h3>
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="text-sm font-semibold text-slate-900">Articles</h3>
+          <button
+            type="button"
+            onClick={addItem}
+            className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-primary bg-tertiary px-3 py-2 text-sm font-semibold text-lime-800 hover:bg-lime-100"
+          >
+            <Plus size={16} />
+            Ajouter un article
+          </button>
+        </div>
 
         {items.map((item, index) => (
           <div
-            key={item.id}
+            key={item.clientId}
+            ref={index === items.length - 1 ? newItemElementRef : undefined}
             className="rounded-3xl border border-slate-200 bg-slate-50 p-4"
           >
-            <p className="mb-4 text-sm font-semibold text-slate-800">
-              Article {index + 1}
-            </p>
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <p className="text-sm font-semibold text-slate-800">
+                Article {index + 1}
+              </p>
+              <button
+                type="button"
+                onClick={() => removeItem(item.clientId)}
+                disabled={items.length === 1}
+                className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+                aria-label={`Supprimer l'article ${index + 1}`}
+              >
+                <Trash2 size={16} />
+                Supprimer
+              </button>
+            </div>
 
             <div className="grid gap-4">
               <label className="block">
@@ -248,7 +308,7 @@ const ModifyEditableRequestPanel = ({
                 <input
                   value={item.description}
                   onChange={(event) =>
-                    updateItem(item.id, "description", event.target.value)
+                    updateItem(item.clientId, "description", event.target.value)
                   }
                   className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-lime-500 focus:ring-4 focus:ring-lime-100"
                 />
@@ -262,7 +322,7 @@ const ModifyEditableRequestPanel = ({
                 <textarea
                   value={item.reason}
                   onChange={(event) =>
-                    updateItem(item.id, "reason", event.target.value)
+                    updateItem(item.clientId, "reason", event.target.value)
                   }
                   rows={2}
                   className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-lime-500 focus:ring-4 focus:ring-lime-100"
@@ -279,7 +339,7 @@ const ModifyEditableRequestPanel = ({
                     inputMode="decimal"
                     value={item.quantity}
                     onChange={(event) =>
-                      updateItem(item.id, "quantity", event.target.value)
+                      updateItem(item.clientId, "quantity", event.target.value)
                     }
                     className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-lime-500 focus:ring-4 focus:ring-lime-100"
                   />
@@ -294,7 +354,7 @@ const ModifyEditableRequestPanel = ({
                     value={item.quantity_format}
                     onChange={(event) =>
                       updateItem(
-                        item.id,
+                        item.clientId,
                         "quantity_format",
                         event.target.value,
                       )
@@ -313,7 +373,7 @@ const ModifyEditableRequestPanel = ({
                     value={item.requested_unit_price}
                     onChange={(event) =>
                       updateItem(
-                        item.id,
+                        item.clientId,
                         "requested_unit_price",
                         event.target.value,
                       )
@@ -332,7 +392,7 @@ const ModifyEditableRequestPanel = ({
                   value={item.requested_supplier}
                   onChange={(event) =>
                     updateItem(
-                      item.id,
+                      item.clientId,
                       "requested_supplier",
                       event.target.value,
                     )
@@ -349,7 +409,7 @@ const ModifyEditableRequestPanel = ({
                 <input
                   value={item.product_link}
                   onChange={(event) =>
-                    updateItem(item.id, "product_link", event.target.value)
+                    updateItem(item.clientId, "product_link", event.target.value)
                   }
                   className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-lime-500 focus:ring-4 focus:ring-lime-100"
                 />
