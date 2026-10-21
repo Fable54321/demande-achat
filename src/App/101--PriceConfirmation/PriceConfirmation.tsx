@@ -38,7 +38,7 @@ const PriceConfirmation = () => {
   const [hasConfirmed, setHasConfirmed] = useState(false)
   const [directApprovalRequested, setDirectApprovalRequested] = useState(false)
   const [directApprovalApprover, setDirectApprovalApprover] = useState<
-    "Ricardo" | "Michelle" | null
+    "Ricardo" | "Lynda" | null
   >(null)
   const [isDirectApprovalSelectorOpen, setIsDirectApprovalSelectorOpen] =
     useState(false)
@@ -241,7 +241,7 @@ useEffect(() => {
   }
 }, [canRequestDirectApproval])
 
-const selectDirectApprovalApprover = (approver: "Ricardo" | "Michelle") => {
+const selectDirectApprovalApprover = (approver: "Ricardo" | "Lynda") => {
   setDirectApprovalApprover(approver)
   setDirectApprovalRequested(true)
   setHasConfirmed(true)
@@ -716,7 +716,7 @@ const successMessage = "la confirmation de prix a bien été envoyée"
                   Qui approuve directement cette demande?
                 </p>
                 <div className="mt-3 grid gap-2 tablet:grid-cols-2">
-                  {(["Ricardo", "Michelle"] as const).map((approver) => (
+                  {(["Ricardo", "Lynda"] as const).map((approver) => (
                     <button
                       key={approver}
                       type="button"

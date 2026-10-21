@@ -150,7 +150,7 @@ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
   }
 }
 
-const name = "Michelle";
+const name = "Lynda";
 const successMessage = adminDecision === "on_wait"
   ? "la demande a été mise en attente; ce lien restera accessible"
   : "la décision a bien été envoyée";

@@ -90,7 +90,7 @@ export interface PurchaseRequest {
   rejection_reason: string | null
 
   direct_approval_requested: boolean
-  direct_approval_approver: "Ricardo" | "Michelle" | null
+  direct_approval_approver: "Ricardo" | "Lynda" | null
   direct_approval_requested_at: string | null
 
   picture_keys: string[]
@@ -136,7 +136,7 @@ export interface BuyerValidationPayload {
   expected_date?: string | null
   buyer_note?: string | null
   direct_approval_requested?: boolean
-  direct_approval_approver?: "Ricardo" | "Michelle" | null
+  direct_approval_approver?: "Ricardo" | "Lynda" | null
   needs_requester_info?: boolean
   reject?: boolean
   rejection_reason?: string | null
