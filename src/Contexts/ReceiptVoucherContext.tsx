@@ -16,6 +16,8 @@ export type CreateReceiptVoucherItemPayload = {
   quantity: number
   received_quantity: number
   comment?: string | null
+  over_receipt_note?: string | null
+  over_receipt_confirmed?: boolean
 }
 
 export type CreateReceiptVoucherPayload = {
@@ -63,6 +65,7 @@ export type ReceiptVoucherItem = {
   quantity: number | string
   received_quantity: number | string | null
   comment: string | null
+  over_receipt_note?: string | null
   created_at: string
   updated_at: string
 }

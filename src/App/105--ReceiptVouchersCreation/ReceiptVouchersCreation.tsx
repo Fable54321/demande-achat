@@ -46,6 +46,7 @@ type ReceiptVoucherGroupForm = {
   receivedAt: string
   deliveryMethod: string
   receiptNote: string
+  overReceiptConfirmed: boolean
   items: ReceiptVoucherItemForm[]
 }
 
@@ -177,6 +178,7 @@ const VEGIBEC_ADDRESS = [
 
 const DEFAULT_RECEIVED_BY_NAME = "Ricardo Molière"
 const DEFAULT_RECEIVED_BY_EMAIL = "achats@vegibec.com"
+const MAX_OVER_RECEIPT_NOTE_LENGTH = 240
 
 const receiptVoucherFieldClass =
   "rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-[#4B7312] focus:ring-4 focus:ring-[#96c61c]/20"
@@ -206,6 +208,17 @@ const toRoundedNumber = (value: string, decimals = 4) => {
 
   const factor = 10 ** decimals
   return Math.round((number + Number.EPSILON) * factor) / factor
+}
+
+const isOverReceiptItem = (item: ReceiptVoucherItemForm) => {
+  const remainingQuantity = toRoundedNumber(item.remaining_quantity)
+  const receivedQuantity = toRoundedNumber(item.received_quantity)
+
+  return (
+    remainingQuantity !== null &&
+    receivedQuantity !== null &&
+    receivedQuantity > remainingQuantity
+  )
 }
 
 const toOptionalNumber = (value: number | string | null | undefined) => {
@@ -696,6 +709,7 @@ const createGroupFromPurchaseOrder = ({
     receivedAt: getTodayDateInputValue(),
     deliveryMethod: purchaseOrder?.delivery_method ?? "",
     receiptNote: "",
+    overReceiptConfirmed: false,
     items: items.map((item) =>
       createItemFromRequest(
         item,
@@ -727,6 +741,7 @@ const createEmptyGroup = (): ReceiptVoucherGroupForm => ({
   receivedAt: getTodayDateInputValue(),
   deliveryMethod: "",
   receiptNote: "",
+  overReceiptConfirmed: false,
   items: [],
 })
 
@@ -769,6 +784,7 @@ const createReceiptGroupForRequestItem = (
     buyerEmail: group.buyerEmail,
     buyerPhone: group.buyerPhone,
     receiptNote: group.receiptNote,
+    overReceiptConfirmed: group.overReceiptConfirmed,
   }
 }
 
@@ -909,6 +925,7 @@ const ReceiptVoucherDocument = ({
   const displayedOrderReference =
     group.purchase_order_reference ??
     `${requestReference}${groupsCount > 1 ? `-${groupIndex + 1}` : ""}`
+  const hasOverReceipt = group.items.some(isOverReceiptItem)
 
   const updatePickupAddress = (
     update: Partial<
@@ -1017,9 +1034,13 @@ const ReceiptVoucherDocument = ({
   const updateItem = (
     itemKey: string,
     update: Partial<ReceiptVoucherItemForm>,
+    resetOverReceiptConfirmation = false,
   ) => {
     onChange({
       ...group,
+      overReceiptConfirmed: resetOverReceiptConfirmation
+        ? false
+        : group.overReceiptConfirmed,
       items: group.items.map((item) =>
         getReceiptItemKey(item) === itemKey
           ? { ...item, ...update }
@@ -1403,6 +1424,7 @@ const ReceiptVoucherDocument = ({
           <tbody>
             {group.items.map((item) => {
               const itemKey = getReceiptItemKey(item)
+              const isOverReceived = isOverReceiptItem(item)
 
               return (
               <tr key={itemKey} className="align-top">
@@ -1451,20 +1473,24 @@ const ReceiptVoucherDocument = ({
                     <input
                       type="number"
                       min="0"
-                      max={item.remaining_quantity}
-                      step="0.01"
+                      step="1"
                     value={item.received_quantity}
                     onChange={(event) =>
                       updateItem(itemKey, {
                         received_quantity: event.target.value,
-                      })
+                      }, true)
                     }
-                      className={`w-full ${receiptVoucherTableFieldClass}`}
+                      className={`w-full ${receiptVoucherTableFieldClass} ${
+                        isOverReceived
+                          ? "border-amber-500! bg-amber-50! focus:border-amber-600! focus:ring-amber-200!"
+                          : ""
+                      }`}
                     />
                     <p className="mt-1 text-xs font-semibold text-slate-500">
                       Quantité restante : {item.remaining_quantity}{" "}
                       {item.quantity_format}
                     </p>
+                   
                 </td>
 
                 <td className="border border-[#d2dfd2] p-2">
@@ -1497,18 +1523,58 @@ const ReceiptVoucherDocument = ({
       </div>
 
       <div className="mt-6">
+        {hasOverReceipt && (
+          <p className="mb-2 rounded-lg bg-amber-50 px-3 py-2 text-sm font-bold text-amber-900">
+           La quantité reçue dépasse la quantité commandée. Une note et une confirmation de l'acheteur sont requises.
+          </p>
+        )}
         <label className="block">
-          <span className="text-sm font-black uppercase text-[#1f6b24]">
-            Note de réception
+          <span
+            className={`text-sm font-black uppercase ${
+              hasOverReceipt ? "text-amber-800" : "text-[#1f6b24]"
+            }`}
+          >
+            Note de réception{hasOverReceipt ? " — requise" : ""}
           </span>
           <textarea
             value={group.receiptNote}
+            maxLength={hasOverReceipt ? MAX_OVER_RECEIPT_NOTE_LENGTH : undefined}
             onChange={(event) =>
-              onChange({ ...group, receiptNote: event.target.value })
+              onChange({
+                ...group,
+                receiptNote: event.target.value,
+                overReceiptConfirmed: false,
+              })
             }
-            className={`mt-2 min-h-20 w-full ${receiptVoucherFieldClass}`}
+            className={`mt-2 min-h-20 w-full ${receiptVoucherFieldClass} ${
+              hasOverReceipt
+                ? "border-amber-500! bg-amber-50! focus:border-amber-600! focus:ring-amber-200!"
+                : ""
+            }`}
           />
         </label>
+        {hasOverReceipt && (
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+            <label className="flex cursor-pointer items-center gap-2 text-sm font-bold text-amber-950">
+              <input
+                type="checkbox"
+                checked={group.overReceiptConfirmed}
+                disabled={!group.receiptNote.trim()}
+                onChange={(event) =>
+                  onChange({
+                    ...group,
+                    overReceiptConfirmed: event.target.checked,
+                  })
+                }
+                className="h-4 w-4 accent-amber-700"
+              />
+              Je confirme la réception de la quantité supplémentaire.
+            </label>
+            <span className="text-xs font-semibold text-amber-800">
+              {group.receiptNote.length}/{MAX_OVER_RECEIPT_NOTE_LENGTH}
+            </span>
+          </div>
+        )}
       </div>
     </section>
   )
@@ -1632,15 +1698,27 @@ const ReceiptVouchersCreation = () => {
           remainingQuantity === null ||
           remainingQuantity <= 0 ||
           receivedQuantity === null ||
-          receivedQuantity <= 0 ||
-          receivedQuantity > remainingQuantity
+          receivedQuantity <= 0
         )
       }),
     )
 
     if (invalidGroup) {
       setSubmitError(
-        "La quantité reçue doit être supérieure à 0 et ne peut pas dépasser la quantité restante.",
+        "La quantité reçue doit être supérieure à 0.",
+      )
+      return
+    }
+
+    const unconfirmedOverReceiptGroup = activeGroups.find(
+      (group) =>
+        group.items.some(isOverReceiptItem) &&
+        (!group.overReceiptConfirmed || !group.receiptNote.trim()),
+    )
+
+    if (unconfirmedOverReceiptGroup) {
+      setSubmitError(
+        "Ajoutez une note de réception et confirmez la quantité supplémentaire.",
       )
       return
     }
@@ -1687,6 +1765,11 @@ const ReceiptVouchersCreation = () => {
           quantity: toRoundedNumber(item.quantity) ?? 0,
           received_quantity: toRoundedNumber(item.received_quantity) ?? 0,
           comment: toNullableText(item.comment),
+          over_receipt_note: isOverReceiptItem(item)
+            ? toNullableText(group.receiptNote)
+            : null,
+          over_receipt_confirmed:
+            isOverReceiptItem(item) && group.overReceiptConfirmed,
         })),
       })
 
